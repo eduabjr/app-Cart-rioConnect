@@ -4,6 +4,15 @@
  * Carrega dados do arquivo JSON local: cartoriosInterligados.json
  */
 
+export type TipoCartorio = 
+  | 'Civil' 
+  | 'Protesto' 
+  | 'Imóveis' 
+  | 'Títulos e Documentos' 
+  | 'Jurídico' 
+  | 'Tabelionato de Notas'
+  | 'Outros';
+
 export interface Cartorio {
   numeroCNJ?: string;
   tituloCartorio?: string;
@@ -15,6 +24,7 @@ export interface Cartorio {
   uf?: string;
   telefone?: string;
   email?: string;
+  tipo?: TipoCartorio;
 }
 
 export interface DatabaseMetadata {
@@ -47,18 +57,24 @@ class CartorioService {
       }
       
       // Normalizar dados
-      const cartoriosNormalizados = cartorios.map((cart: any) => ({
-        numeroCNJ: cart.numeroCNJ || cart.numeroCnj || '',
-        tituloCartorio: cart.tituloCartorio || '',
-        responsavel: cart.responsavel || '',
-        endereco: cart.endereco || '',
-        numero: cart.numero || '',
-        bairro: cart.bairro || '',
-        cidade: cart.cidade || '',
-        uf: cart.uf || '',
-        telefone: cart.telefone || '',
-        email: cart.email || '',
-      }));
+      const cartoriosNormalizados = cartorios.map((cart: any) => {
+        const titulo = (cart.tituloCartorio || '').toUpperCase();
+        let tipo: TipoCartorio = cart.tipo || this.detectarTipoCartorio(titulo);
+        
+        return {
+          numeroCNJ: cart.numeroCNJ || cart.numeroCnj || '',
+          tituloCartorio: cart.tituloCartorio || '',
+          responsavel: cart.responsavel || '',
+          endereco: cart.endereco || '',
+          numero: cart.numero || '',
+          bairro: cart.bairro || '',
+          cidade: cart.cidade || '',
+          uf: cart.uf || '',
+          telefone: cart.telefone || '',
+          email: cart.email || '',
+          tipo: tipo,
+        };
+      });
       
       // Salvar no cache em memória
       this.cartoriosCache = cartoriosNormalizados;
@@ -126,6 +142,95 @@ class CartorioService {
         c.responsavel?.toLowerCase().includes(termoLower) ||
         false,
     );
+  }
+
+  /**
+   * Busca cartórios por tipo
+   */
+  async buscarPorTipo(tipo: TipoCartorio): Promise<Cartorio[]> {
+    const cartorios = await this.buscarTodosCartorios();
+    return cartorios.filter(c => c.tipo === tipo);
+  }
+
+  /**
+   * Detecta o tipo de cartório baseado no título
+   */
+  private detectarTipoCartorio(titulo: string): TipoCartorio {
+    const tituloUpper = titulo.toUpperCase();
+    
+    // Tabelionato de Notas
+    if (tituloUpper.includes('TABELIÃO') && tituloUpper.includes('NOTAS')) {
+      return 'Tabelionato de Notas';
+    }
+    if (tituloUpper.includes('TABELIONATO DE NOTAS')) {
+      return 'Tabelionato de Notas';
+    }
+    
+    // Registro Civil
+    if (tituloUpper.includes('REGISTRO CIVIL')) {
+      return 'Civil';
+    }
+    if (tituloUpper.includes('CIVIL') && tituloUpper.includes('PESSOAS NATURAIS')) {
+      return 'Civil';
+    }
+    
+    // Protesto
+    if (tituloUpper.includes('PROTESTO')) {
+      return 'Protesto';
+    }
+    
+    // Imóveis
+    if (tituloUpper.includes('IMÓVEIS') || tituloUpper.includes('IMOveis')) {
+      return 'Imóveis';
+    }
+    if (tituloUpper.includes('REGISTRO DE IMÓVEIS')) {
+      return 'Imóveis';
+    }
+    
+    // Títulos e Documentos
+    if (tituloUpper.includes('TÍTULOS') || tituloUpper.includes('TITULOS')) {
+      return 'Títulos e Documentos';
+    }
+    if (tituloUpper.includes('TÍTULOS E DOCUMENTOS') || tituloUpper.includes('TITULOS E DOCUMENTOS')) {
+      return 'Títulos e Documentos';
+    }
+    
+    // Jurídico
+    if (tituloUpper.includes('JURÍDICO') || tituloUpper.includes('JURIDICO')) {
+      return 'Jurídico';
+    }
+    
+    // Se não encontrar, retorna "Outros"
+    return 'Outros';
+  }
+
+  /**
+   * Obtém todos os tipos disponíveis
+   */
+  async getTiposDisponiveis(): Promise<TipoCartorio[]> {
+    const cartorios = await this.buscarTodosCartorios();
+    const tipos = new Set<TipoCartorio>();
+    cartorios.forEach(c => {
+      if (c.tipo) {
+        tipos.add(c.tipo);
+      }
+    });
+    return Array.from(tipos).sort();
+  }
+
+  /**
+   * Conta cartórios por tipo
+   */
+  async contarPorTipo(): Promise<Record<TipoCartorio, number>> {
+    const cartorios = await this.buscarTodosCartorios();
+    const contagem: Record<string, number> = {};
+    
+    cartorios.forEach(c => {
+      const tipo = c.tipo || 'Outros';
+      contagem[tipo] = (contagem[tipo] || 0) + 1;
+    });
+    
+    return contagem as Record<TipoCartorio, number>;
   }
 
   /**

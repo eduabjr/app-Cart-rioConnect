@@ -19,7 +19,13 @@ import {locationService} from '../services/locationService';
 import {shareService} from '../services/shareService';
 import AdBanner from '../components/AdBanner';
 import {RootStackParamList} from '../../App';
-import {BannerAdSize} from 'react-native-google-mobile-ads';
+// Importação condicional do BannerAdSize
+let BannerAdSize: any;
+try {
+  BannerAdSize = require('react-native-google-mobile-ads').BannerAdSize;
+} catch (error) {
+  BannerAdSize = {FULL_BANNER: 'FULL_BANNER'};
+}
 
 // Cores principais do design (igual à HomeScreen):
 const COLORS = {

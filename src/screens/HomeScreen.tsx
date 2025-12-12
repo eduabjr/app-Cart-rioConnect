@@ -24,9 +24,16 @@ import {useNavigation} from '@react-navigation/native';
 import {StackNavigationProp} from '@react-navigation/stack';
 import {RootStackParamList} from '../../App';
 import {storageService} from '../services/storageService';
-import {cartorioService, Cartorio} from '../services/cartorioService';
+import {cartorioService, Cartorio, TipoCartorio} from '../services/cartorioService';
 import AdBanner from '../components/AdBanner';
-import {BannerAdSize} from 'react-native-google-mobile-ads';
+import InfoModal from '../components/InfoModal';
+// Importação condicional do BannerAdSize
+let BannerAdSize: any;
+try {
+  BannerAdSize = require('react-native-google-mobile-ads').BannerAdSize;
+} catch (error) {
+  BannerAdSize = {FULL_BANNER: 'FULL_BANNER'};
+}
 // Recomenda-se usar ícones vetoriais (Ex: @expo/vector-icons) para ícones,
 // mas vou usar emojis aqui para manter a simplicidade do seu código atual.
 
@@ -51,6 +58,8 @@ const HomeScreen = () => {
   const [favorites, setFavorites] = useState<Cartorio[]>([]);
   const [recentSearches, setRecentSearches] = useState<Cartorio[]>([]);
   const [lastUpdate, setLastUpdate] = useState<string>('');
+  const [showInfoModal, setShowInfoModal] = useState(false);
+  const [selectedTipo, setSelectedTipo] = useState<TipoCartorio | null>(null);
   
   // Obter os insets da área segura (status bar, notch, etc.)
   const insets = useSafeAreaInsets();
@@ -102,6 +111,11 @@ const HomeScreen = () => {
     navigation.navigate('CartorioList', {filterType: filterType as 'uf' | 'cidade' | 'cnj'});
   };
 
+  const handleFilterByTipo = (tipo: TipoCartorio) => {
+    setSelectedTipo(tipo);
+    navigation.navigate('CartorioList', {filterType: 'tipo', tipoFiltro: tipo});
+  };
+
   const handleCartorioPress = (cartorio: Cartorio) => {
     navigation.navigate('CartorioDetail', {cartorio});
   };
@@ -137,11 +151,18 @@ const HomeScreen = () => {
           </View>
           <Text style={styles.topBarTitle}>CartórioConnect</Text>
         </View>
-        <TouchableOpacity 
-          style={styles.menuButton}
-          onPress={() => navigation.navigate('About')}>
-          <Text style={styles.menuIcon}>ℹ️</Text>
-        </TouchableOpacity>
+        <View style={styles.topBarRight}>
+          <TouchableOpacity 
+            style={styles.menuButton}
+            onPress={() => setShowInfoModal(true)}>
+            <Text style={styles.menuIcon}>⋯</Text>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={styles.menuButton}
+            onPress={() => navigation.navigate('About')}>
+            <Text style={styles.menuIcon}>ℹ️</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       <ScrollView
@@ -281,6 +302,37 @@ const HomeScreen = () => {
             />
           </View>
 
+          {/* Filtros por Tipo de Cartório */}
+          <View style={styles.tipoSection}>
+            <Text style={styles.tipoSectionTitle}>Filtrar por Tipo</Text>
+            <View style={styles.tipoButtonsContainer}>
+              <TipoButton 
+                tipo="Civil" 
+                onPress={() => handleFilterByTipo('Civil')} 
+              />
+              <TipoButton 
+                tipo="Protesto" 
+                onPress={() => handleFilterByTipo('Protesto')} 
+              />
+              <TipoButton 
+                tipo="Imóveis" 
+                onPress={() => handleFilterByTipo('Imóveis')} 
+              />
+              <TipoButton 
+                tipo="Títulos e Documentos" 
+                onPress={() => handleFilterByTipo('Títulos e Documentos')} 
+              />
+              <TipoButton 
+                tipo="Jurídico" 
+                onPress={() => handleFilterByTipo('Jurídico')} 
+              />
+              <TipoButton 
+                tipo="Tabelionato de Notas" 
+                onPress={() => handleFilterByTipo('Tabelionato de Notas')} 
+              />
+            </View>
+          </View>
+
           {/* Banner do Google AdMob */}
           <AdBanner 
             size={BannerAdSize.FULL_BANNER}
@@ -288,6 +340,12 @@ const HomeScreen = () => {
           />
         </View>
       </ScrollView>
+
+      {/* Modal de Informações */}
+      <InfoModal 
+        visible={showInfoModal}
+        onClose={() => setShowInfoModal(false)}
+      />
     </View>
   );
 };
@@ -302,6 +360,31 @@ const CategoryButton = ({icon, text, onPress}: {icon: string, text: string, onPr
     <Text style={styles.categoryText}>{text}</Text>
   </TouchableOpacity>
 );
+
+// Componente auxiliar para botões de tipo
+const TipoButton = ({tipo, onPress}: {tipo: TipoCartorio, onPress: () => void}) => {
+  const getTipoIcon = (t: TipoCartorio) => {
+    switch (t) {
+      case 'Civil': return '👤';
+      case 'Protesto': return '📜';
+      case 'Imóveis': return '🏠';
+      case 'Títulos e Documentos': return '📄';
+      case 'Jurídico': return '⚖️';
+      case 'Tabelionato de Notas': return '✍️';
+      default: return '📋';
+    }
+  };
+
+  return (
+    <TouchableOpacity
+      style={styles.tipoButton}
+      activeOpacity={0.7}
+      onPress={onPress}>
+      <Text style={styles.tipoIcon}>{getTipoIcon(tipo)}</Text>
+      <Text style={styles.tipoText} numberOfLines={1}>{tipo}</Text>
+    </TouchableOpacity>
+  );
+};
 
 const styles = StyleSheet.create({
   container: {
@@ -350,6 +433,11 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '700',
     color: COLORS.white,
+  },
+  topBarRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   menuButton: {
     padding: 8,
@@ -638,6 +726,47 @@ const styles = StyleSheet.create({
   recentCardCity: {
     fontSize: 12,
     color: COLORS.textSubtle,
+  },
+  // Seção de Tipos
+  tipoSection: {
+    width: '100%',
+    marginTop: 20,
+    marginBottom: 20,
+  },
+  tipoSectionTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: COLORS.textDark,
+    marginBottom: 12,
+    paddingHorizontal: 16,
+  },
+  tipoButtonsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    paddingHorizontal: 16,
+    gap: 8,
+  },
+  tipoButton: {
+    backgroundColor: COLORS.secondary,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: COLORS.secondary,
+    minWidth: '30%',
+    maxWidth: '48%',
+  },
+  tipoIcon: {
+    fontSize: 18,
+    marginRight: 6,
+  },
+  tipoText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: COLORS.primary,
+    flex: 1,
   },
 });
 

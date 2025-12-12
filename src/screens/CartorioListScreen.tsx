@@ -16,7 +16,7 @@ import * as Linking from 'expo-linking';
 import {useNavigation, useRoute, RouteProp} from '@react-navigation/native';
 import {StackNavigationProp} from '@react-navigation/stack';
 import {RootStackParamList} from '../../App';
-import {cartorioService, Cartorio} from '../services/cartorioService';
+import {cartorioService, Cartorio, TipoCartorio} from '../services/cartorioService';
 import {storageService} from '../services/storageService';
 import {locationService, CartorioWithDistance} from '../services/locationService';
 
@@ -45,8 +45,11 @@ const CartorioListScreen = () => {
   const [sortByProximity, setSortByProximity] = useState(false);
   const [userLocation, setUserLocation] = useState<{latitude: number; longitude: number} | null>(null);
   // Inicializar o filtro com o valor recebido via navegação, ou 'all' como padrão
-  const [filterType, setFilterType] = useState<'all' | 'uf' | 'cidade' | 'cnj'>(
+  const [filterType, setFilterType] = useState<'all' | 'uf' | 'cidade' | 'cnj' | 'tipo'>(
     route.params?.filterType || 'all'
+  );
+  const [tipoFiltro, setTipoFiltro] = useState<TipoCartorio | undefined>(
+    route.params?.tipoFiltro
   );
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
@@ -62,11 +65,14 @@ const CartorioListScreen = () => {
     if (route.params?.filterType) {
       setFilterType(route.params.filterType);
     }
+    if (route.params?.tipoFiltro) {
+      setTipoFiltro(route.params.tipoFiltro);
+    }
   }, [route.params]);
 
   useEffect(() => {
     filterCartorios();
-  }, [searchText, cartorios, filterType, sortByProximity, userLocation]);
+  }, [searchText, cartorios, filterType, tipoFiltro, sortByProximity, userLocation]);
 
   const loadFavorites = async () => {
     try {
@@ -109,26 +115,41 @@ const CartorioListScreen = () => {
   const filterCartorios = async () => {
     let filtered = cartorios;
 
+    // Aplicar filtro por tipo primeiro (se especificado)
+    if (filterType === 'tipo' && tipoFiltro) {
+      filtered = await cartorioService.buscarPorTipo(tipoFiltro);
+    }
+
     // Aplicar filtro de busca se houver texto
     if (searchText.trim() !== '') {
       switch (filterType) {
         case 'uf':
-          filtered = cartorios.filter(c =>
+          filtered = filtered.filter(c =>
             c.uf?.toLowerCase().includes(searchText.toLowerCase())
           );
           break;
         case 'cidade':
-          filtered = cartorios.filter(c =>
+          filtered = filtered.filter(c =>
             c.cidade?.toLowerCase().includes(searchText.toLowerCase())
           );
           break;
         case 'cnj':
-          filtered = cartorios.filter(c =>
+          filtered = filtered.filter(c =>
             c.numeroCNJ?.includes(searchText)
           );
           break;
+        case 'tipo':
+          // Se já filtrou por tipo, apenas busca dentro dos resultados
+          filtered = filtered.filter(
+            c =>
+              c.tituloCartorio?.toLowerCase().includes(searchText.toLowerCase()) ||
+              c.cidade?.toLowerCase().includes(searchText.toLowerCase()) ||
+              c.uf?.toLowerCase().includes(searchText.toLowerCase()) ||
+              c.numeroCNJ?.includes(searchText)
+          );
+          break;
         default:
-          filtered = cartorios.filter(
+          filtered = filtered.filter(
             c =>
               c.tituloCartorio?.toLowerCase().includes(searchText.toLowerCase()) ||
               c.cidade?.toLowerCase().includes(searchText.toLowerCase()) ||

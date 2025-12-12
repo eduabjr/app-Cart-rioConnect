@@ -5,6 +5,7 @@
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {Cartorio} from './cartorioService';
+import {encryptionService} from './encryptionService';
 
 const STORAGE_KEYS = {
   FAVORITES: '@cartorio_connect:favorites',
@@ -34,10 +35,10 @@ class StorageService {
 
       if (!exists) {
         favorites.push(cartorio);
-        await AsyncStorage.setItem(
-          STORAGE_KEYS.FAVORITES,
-          JSON.stringify(favorites)
-        );
+        const jsonData = JSON.stringify(favorites);
+        // Criptografar dados antes de armazenar
+        const encrypted = await encryptionService.encryptData(jsonData);
+        await AsyncStorage.setItem(STORAGE_KEYS.FAVORITES, encrypted);
       }
     } catch (error) {
       console.error('Erro ao adicionar favorito:', error);
@@ -54,10 +55,10 @@ class StorageService {
       const filtered = favorites.filter(
         fav => fav.numeroCNJ !== cartorioCNJ
       );
-      await AsyncStorage.setItem(
-        STORAGE_KEYS.FAVORITES,
-        JSON.stringify(filtered)
-      );
+      const jsonData = JSON.stringify(filtered);
+      // Criptografar dados antes de armazenar
+      const encrypted = await encryptionService.encryptData(jsonData);
+      await AsyncStorage.setItem(STORAGE_KEYS.FAVORITES, encrypted);
     } catch (error) {
       console.error('Erro ao remover favorito:', error);
       throw error;
@@ -82,9 +83,22 @@ class StorageService {
    */
   async getFavorites(): Promise<Cartorio[]> {
     try {
-      const data = await AsyncStorage.getItem(STORAGE_KEYS.FAVORITES);
-      if (!data) return [];
-      return JSON.parse(data);
+      const encryptedData = await AsyncStorage.getItem(STORAGE_KEYS.FAVORITES);
+      if (!encryptedData) return [];
+      
+      // Tentar descriptografar (pode ser dados antigos não criptografados)
+      let jsonData: string;
+      if (encryptionService.isEncrypted(encryptedData)) {
+        jsonData = await encryptionService.decryptData(encryptedData);
+      } else {
+        // Dados antigos não criptografados - migrar
+        jsonData = encryptedData;
+        // Recriptografar e salvar
+        const encrypted = await encryptionService.encryptData(jsonData);
+        await AsyncStorage.setItem(STORAGE_KEYS.FAVORITES, encrypted);
+      }
+      
+      return JSON.parse(jsonData);
     } catch (error) {
       console.error('Erro ao buscar favoritos:', error);
       return [];
@@ -116,10 +130,10 @@ class StorageService {
       // Limita o número de buscas recentes
       const limited = filtered.slice(0, STORAGE_KEYS.MAX_RECENT_SEARCHES);
 
-      await AsyncStorage.setItem(
-        STORAGE_KEYS.RECENT_SEARCHES,
-        JSON.stringify(limited)
-      );
+      const jsonData = JSON.stringify(limited);
+      // Criptografar dados antes de armazenar
+      const encrypted = await encryptionService.encryptData(jsonData);
+      await AsyncStorage.setItem(STORAGE_KEYS.RECENT_SEARCHES, encrypted);
     } catch (error) {
       console.error('Erro ao adicionar busca recente:', error);
       throw error;
@@ -131,9 +145,22 @@ class StorageService {
    */
   async getRecentSearches(): Promise<RecentSearch[]> {
     try {
-      const data = await AsyncStorage.getItem(STORAGE_KEYS.RECENT_SEARCHES);
-      if (!data) return [];
-      return JSON.parse(data);
+      const encryptedData = await AsyncStorage.getItem(STORAGE_KEYS.RECENT_SEARCHES);
+      if (!encryptedData) return [];
+      
+      // Tentar descriptografar (pode ser dados antigos não criptografados)
+      let jsonData: string;
+      if (encryptionService.isEncrypted(encryptedData)) {
+        jsonData = await encryptionService.decryptData(encryptedData);
+      } else {
+        // Dados antigos não criptografados - migrar
+        jsonData = encryptedData;
+        // Recriptografar e salvar
+        const encrypted = await encryptionService.encryptData(jsonData);
+        await AsyncStorage.setItem(STORAGE_KEYS.RECENT_SEARCHES, encrypted);
+      }
+      
+      return JSON.parse(jsonData);
     } catch (error) {
       console.error('Erro ao buscar buscas recentes:', error);
       return [];
