@@ -5,7 +5,9 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
+  StatusBar,
 } from 'react-native';
+import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import * as Linking from 'expo-linking';
 import {RouteProp, useRoute} from '@react-navigation/native';
 import {StackNavigationProp, useNavigation} from '@react-navigation/stack';
@@ -26,6 +28,7 @@ type CartorioDetailScreenNavigationProp = StackNavigationProp<
 const CartorioDetailScreen = () => {
   const route = useRoute<CartorioDetailScreenRouteProp>();
   const navigation = useNavigation<CartorioDetailScreenNavigationProp>();
+  const insets = useSafeAreaInsets();
   const {cartorio} = route.params;
 
   const handleCall = (phone: string) => {
@@ -37,9 +40,15 @@ const CartorioDetailScreen = () => {
   };
 
   return (
-    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-      {/* Header */}
-      <View style={styles.header}>
+    <View style={styles.container}>
+      <StatusBar 
+        barStyle="light-content" 
+        backgroundColor="transparent" 
+        translucent={true}
+      />
+      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+        {/* Header */}
+        <View style={[styles.header, {paddingTop: insets.top + 16}]}>
         <TouchableOpacity
           style={styles.backButton}
           onPress={() => navigation.goBack()}>
@@ -162,7 +171,8 @@ const CartorioDetailScreen = () => {
         height={100}
         onAdPress={() => console.log('Anúncio clicado')}
       />
-    </ScrollView>
+      </ScrollView>
+    </View>
   );
 };
 
@@ -171,14 +181,17 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#f5f7fa',
   },
+  scrollView: {
+    flex: 1,
+  },
   header: {
     backgroundColor: '#667eea',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
-    paddingVertical: 16,
-    paddingTop: 50,
+    paddingBottom: 16,
+    zIndex: 10,
   },
   backButton: {
     padding: 8,

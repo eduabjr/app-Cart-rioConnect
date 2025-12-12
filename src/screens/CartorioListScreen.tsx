@@ -8,7 +8,9 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Alert,
+  StatusBar,
 } from 'react-native';
+import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import * as Clipboard from 'expo-clipboard';
 import * as Linking from 'expo-linking';
 import {useNavigation} from '@react-navigation/native';
@@ -16,6 +18,7 @@ import {cartorioService, Cartorio} from '../services/cartorioService';
 
 const CartorioListScreen = () => {
   const navigation = useNavigation();
+  const insets = useSafeAreaInsets();
   const [cartorios, setCartorios] = useState<Cartorio[]>([]);
   const [filteredCartorios, setFilteredCartorios] = useState<Cartorio[]>([]);
   const [searchText, setSearchText] = useState('');
@@ -202,8 +205,13 @@ const CartorioListScreen = () => {
 
   return (
     <View style={styles.container}>
+      <StatusBar 
+        barStyle="light-content" 
+        backgroundColor="transparent" 
+        translucent={true}
+      />
       {/* Header Moderno */}
-      <View style={styles.header}>
+      <View style={[styles.header, {paddingTop: insets.top + 16}]}>
         <TouchableOpacity
           style={styles.backButton}
           onPress={() => navigation.goBack()}>
@@ -360,8 +368,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
-    paddingVertical: 16,
-    paddingTop: 50,
+    paddingBottom: 16,
+    zIndex: 10,
   },
   backButton: {
     padding: 8,

@@ -15,10 +15,11 @@ import {
   TouchableOpacity,
   TextInput,
   ScrollView,
-  SafeAreaView,
   Platform,
   Dimensions,
+  StatusBar,
 } from 'react-native';
+import {SafeAreaView, useSafeAreaInsets} from 'react-native-safe-area-context';
 import {useNavigation} from '@react-navigation/native';
 // Recomenda-se usar ícones vetoriais (Ex: @expo/vector-icons) para ícones,
 // mas vou usar emojis aqui para manter a simplicidade do seu código atual.
@@ -39,6 +40,9 @@ const screenHeight = Dimensions.get('window').height;
 const HomeScreen = () => {
   const navigation = useNavigation();
   const [searchText, setSearchText] = useState('');
+  
+  // Obter os insets da área segura (status bar, notch, etc.)
+  const insets = useSafeAreaInsets();
 
   const handleSearch = () => {
     // Implemente a lógica de navegação/busca aqui
@@ -55,13 +59,19 @@ const HomeScreen = () => {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={styles.container}>
+      {/* StatusBar transparente para que o conteúdo azul apareça por trás */}
+      <StatusBar 
+        barStyle="light-content" 
+        backgroundColor="transparent" 
+        translucent={true}
+      />
       
-      {/* 1. Fundo Curvo Azul (Para a área do Header) */}
-      <View style={styles.blueBackground} />
+      {/* 1. Fundo Curvo Azul (Para a área do Header) - Começa após a status bar */}
+      <View style={[styles.blueBackground, {top: insets.top}]} />
 
-      {/* 2. Top Bar e Título (Sobrepondo o fundo azul) */}
-      <View style={styles.topBar}>
+      {/* 2. Top Bar e Título (Sobrepondo o fundo azul) - Respeita a área segura */}
+      <View style={[styles.topBar, {paddingTop: insets.top + 8}]}>
         <View style={styles.topBarLeft}>
           {/* Logo do App: Ícone e Título */}
           <View style={styles.topBarIconContainer}>
@@ -148,7 +158,7 @@ const HomeScreen = () => {
           </View>
         </View>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 };
 
@@ -171,7 +181,8 @@ const styles = StyleSheet.create({
   // Fundo Curvo que cria o efeito visual do Header
   blueBackground: {
     position: 'absolute',
-    top: 0,
+    left: 0,
+    right: 0,
     width: '100%',
     height: Platform.OS === 'ios' ? 220 : 180, // Altura que cobre o topo e parte do card
     backgroundColor: COLORS.primary,
@@ -184,9 +195,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    // Ajustar padding superior para SafeAreaView
-    paddingTop: Platform.OS === 'android' ? 12 : 0, 
-    height: 60,
+    minHeight: 60,
+    zIndex: 10, // Garantir que fique acima do fundo azul
   },
   topBarLeft: {
     flexDirection: 'row',
