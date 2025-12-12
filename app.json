@@ -26,7 +26,10 @@
         "backgroundColor": "#667eea"
       },
       "package": "com.cartorioconnect.app",
-      "permissions": [],
+      "permissions": [
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION"
+      ],
       "blockedPermissions": [
         "android.permission.RECEIVE_BOOT_COMPLETED",
         "android.permission.WAKE_LOCK",

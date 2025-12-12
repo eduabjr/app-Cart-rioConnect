@@ -59,19 +59,25 @@ const HomeScreen = () => {
   };
 
   return (
-    <View style={styles.container}>
-      {/* StatusBar transparente para que o conteúdo azul apareça por trás */}
+    <View style={[styles.container, {paddingTop: insets.top}]}>
+      {/* StatusBar - área de notificação totalmente visível */}
       <StatusBar 
-        barStyle="light-content" 
+        barStyle="dark-content" 
         backgroundColor="transparent" 
-        translucent={true}
+        translucent={false}
       />
       
-      {/* 1. Fundo Curvo Azul (Para a área do Header) - Começa após a status bar */}
-      <View style={[styles.blueBackground, {top: insets.top}]} />
+      {/* 1. Fundo Curvo Azul (Para a área do Header) - Começa APÓS a área de notificação */}
+      <View style={[
+        styles.blueBackground, 
+        {
+          top: insets.top, 
+          height: Platform.OS === 'ios' ? 220 : 180,
+        }
+      ]} />
 
       {/* 2. Top Bar e Título (Sobrepondo o fundo azul) - Respeita a área segura */}
-      <View style={[styles.topBar, {paddingTop: insets.top + 8}]}>
+      <View style={[styles.topBar, {paddingTop: 12, paddingBottom: 12}]}>
         <View style={styles.topBarLeft}>
           {/* Logo do App: Ícone e Título */}
           <View style={styles.topBarIconContainer}>
@@ -184,10 +190,10 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     width: '100%',
-    height: Platform.OS === 'ios' ? 220 : 180, // Altura que cobre o topo e parte do card
     backgroundColor: COLORS.primary,
     borderBottomLeftRadius: 30,
     borderBottomRightRadius: 30,
+    // A altura será calculada dinamicamente para incluir a status bar
   },
   // Top Bar (Fica sobreposto ao blueBackground)
   topBar: {
@@ -195,8 +201,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    minHeight: 60,
+    minHeight: 56,
     zIndex: 10, // Garantir que fique acima do fundo azul
+    position: 'relative',
   },
   topBarLeft: {
     flexDirection: 'row',

@@ -30,8 +30,12 @@ Facilitar o acesso a informações de contato de cartórios interligados, permit
 - 🎨 **Design Moderno** - Interface limpa e intuitiva
 - ⚡ **Performance** - Carregamento rápido e busca instantânea
 - 🔍 **Busca Avançada** - Filtros por UF, Cidade ou CNJ
-- 📞 **Ações Rápidas** - Ligue ou envie e-mail diretamente do app
-- 📋 **Copiar Contatos** - Copie informações para área de transferência
+- ⭐ **Favoritos** - Marque cartórios importantes para acesso rápido
+- 🕒 **Buscas Recentes** - Histórico automático de cartórios consultados
+- 📞 **Ações Rápidas** - Ligue, envie e-mail ou compartilhe diretamente
+- 🗺️ **Traçar Rota** - Abre o app de mapas com o endereço do cartório
+- 📤 **Compartilhamento** - Compartilhe dados via WhatsApp ou SMS
+- 📅 **Transparência** - Data de última atualização da base de dados
 
 ---
 
@@ -45,12 +49,21 @@ Facilitar o acesso a informações de contato de cartórios interligados, permit
   - Filtro por **Cidade**
   - Filtro por **CNJ** (Número do cartório)
 - **Busca em Tempo Real**: Resultados instantâneos enquanto você digita
+- **Geolocalização**: Se permitido, mostra cartórios próximos primeiro
+
+### ⭐ Favoritos e Recentes
+
+- **Favoritos**: Marque cartórios importantes com um toque
+- **Acesso Rápido**: Veja seus favoritos na tela inicial
+- **Buscas Recentes**: Histórico automático dos últimos cartórios consultados
+- **Navegação Rápida**: Toque em qualquer favorito ou recente para ver detalhes
 
 ### 📞 Contatos e Ações
 
 - **Ligar Diretamente**: Toque no botão "Ligar" para abrir o discador
 - **Enviar E-mail**: Botão "Email" abre o cliente de e-mail padrão
-- **Copiar Informações**: Copie telefone ou e-mail para área de transferência
+- **Traçar Rota**: Abre Google Maps ou Waze com o endereço do cartório
+- **Compartilhar**: Compartilhe dados completos via WhatsApp ou SMS
 - **Ver Detalhes**: Tela completa com todas as informações do cartório
 
 ### 📄 Informações Disponíveis
@@ -69,14 +82,28 @@ Cada cartório exibe:
 - Controles intuitivos de navegação
 - Indicador de página atual
 
+### 📤 Compartilhamento
+
+- **WhatsApp**: Compartilhe dados formatados via WhatsApp
+- **SMS**: Envie informações via mensagem de texto
+- **Formatação Automática**: Dados organizados com emojis e estrutura clara
+- **Dados Completos**: Nome, CNJ, endereço, telefone e e-mail
+
+### 📅 Transparência e Confiança
+
+- **Data de Atualização**: Veja quando a base de dados foi atualizada pela última vez
+- **Tela Sobre**: Informações detalhadas sobre o app e a base de dados
+- **Versão da Base**: Controle de versão da base de dados offline
+- **Total de Cartórios**: Quantidade de cartórios disponíveis
+
 ### 🎨 Design Visual
 
-- **Header Escuro**: Barra superior com menu e título
+- **Header Azul Curvo**: Design moderno com fundo azul arredondado
 - **Barra de Busca**: Campo de busca com ícone e botão de limpar
 - **Cards Modernos**: Cards brancos com sombras e bordas arredondadas
 - **Badges Coloridos**: Indicadores visuais para UF
 - **Botões de Ação**: Botões coloridos para ações rápidas
-- **Anúncios Flexíveis**: Área dedicada para exibição de anúncios
+- **Anúncios AdMob**: Integração com Google AdMob para banners
 
 ---
 
@@ -84,27 +111,30 @@ Cada cartório exibe:
 
 ### Core
 
-- **[Expo](https://expo.dev/)** (~49.0.15) - Framework para desenvolvimento React Native
-- **[React Native](https://reactnative.dev/)** (0.72.6) - Framework mobile
-- **[React](https://reactjs.org/)** (18.2.0) - Biblioteca JavaScript
+- **[Expo](https://expo.dev/)** (~54.0.0) - Framework para desenvolvimento React Native
+- **[React Native](https://reactnative.dev/)** (0.81.5) - Framework mobile
+- **[React](https://reactjs.org/)** (19.1.0) - Biblioteca JavaScript
 - **[TypeScript](https://www.typescriptlang.org/)** (^5.1.3) - Tipagem estática
 
 ### Navegação
 
-- **[@react-navigation/native](https://reactnavigation.org/)** (^6.1.9) - Navegação
-- **[@react-navigation/stack](https://reactnavigation.org/docs/stack-navigator/)** (^6.3.20) - Navegador em pilha
-- **[react-native-screens](https://github.com/software-mansion/react-native-screens)** (~3.22.0) - Otimização de telas
+- **[@react-navigation/native](https://reactnavigation.org/)** (^6.1.18) - Navegação
+- **[@react-navigation/stack](https://reactnavigation.org/docs/stack-navigator/)** (^6.4.1) - Navegador em pilha
+- **[react-native-screens](https://github.com/software-mansion/react-native-screens)** (~4.16.0) - Otimização de telas
+- **[react-native-safe-area-context](https://github.com/th3rdwave/react-native-safe-area-context)** (~5.6.0) - Áreas seguras
 
 ### Funcionalidades
 
-- **[expo-linking](https://docs.expo.dev/versions/latest/sdk/linking/)** (~5.0.2) - Abrir links (tel:, mailto:)
-- **[expo-clipboard](https://docs.expo.dev/versions/latest/sdk/clipboard/)** (~5.0.0) - Área de transferência
-- **[react-native-webview](https://github.com/react-native-webview/react-native-webview)** (13.2.2) - WebView para anúncios HTML
+- **[expo-linking](https://docs.expo.dev/versions/latest/sdk/linking/)** (~8.0.10) - Abrir links (tel:, mailto:, mapas)
+- **[expo-clipboard](https://docs.expo.dev/versions/latest/sdk/clipboard/)** (~8.0.8) - Área de transferência
+- **[expo-location](https://docs.expo.dev/versions/latest/sdk/location/)** - Geolocalização
+- **[@react-native-async-storage/async-storage](https://react-native-async-storage.github.io/async-storage/)** - Armazenamento local
+- **[react-native-google-mobile-ads](https://github.com/react-native-google-mobile-ads/react-native-google-mobile-ads)** (^16.0.0) - Google AdMob
 
 ### Animações
 
-- **[react-native-reanimated](https://docs.swmansion.com/react-native-reanimated/)** (~3.3.0) - Animações performáticas
-- **[react-native-gesture-handler](https://docs.swmansion.com/react-native-gesture-handler/)** (~2.12.0) - Gestos nativos
+- **[react-native-reanimated](https://docs.swmansion.com/react-native-reanimated/)** (~3.16.1) - Animações performáticas
+- **[react-native-gesture-handler](https://docs.swmansion.com/react-native-gesture-handler/)** (~2.28.0) - Gestos nativos
 
 ---
 
@@ -114,12 +144,22 @@ Cada cartório exibe:
 
 Antes de começar, certifique-se de ter instalado:
 
-- **[Node.js](https://nodejs.org/)** (versão LTS recomendada - 18.x ou superior)
+- **[Node.js](https://nodejs.org/)** (versão LTS recomendada - 20.x ou superior)
 - **[npm](https://www.npmjs.com/)** ou **[Yarn](https://yarnpkg.com/)**
 - **[Git](https://git-scm.com/)**
 - **Expo Go** (app para testar no dispositivo físico)
   - [Android - Google Play](https://play.google.com/store/apps/details?id=host.exp.exponent)
   - [iOS - App Store](https://apps.apple.com/app/expo-go/id982107779)
+
+### Permissões do App
+
+O app solicita as seguintes permissões (opcionais):
+
+- **Localização** (Android/iOS): Para mostrar cartórios próximos e traçar rotas
+  - Permissão solicitada apenas quando necessário
+  - Pode ser negada sem afetar outras funcionalidades
+
+**Nota**: O app funciona 100% offline e não requer conexão com a internet. As permissões são opcionais e melhoram a experiência do usuário.
 
 ### Passo a Passo
 
@@ -169,6 +209,34 @@ Isso abrirá o **Expo Dev Tools** no navegador.
 ---
 
 ## 📱 Como Usar
+
+### Funcionalidades do App
+
+#### 🏠 Tela Inicial (HomeScreen)
+- **Favoritos**: Veja seus cartórios favoritos em scroll horizontal
+- **Recentes**: Acesse rapidamente cartórios consultados recentemente
+- **Data de Atualização**: Veja quando a base de dados foi atualizada
+- **Busca Rápida**: Digite e busque cartórios
+- **Filtros**: Use os botões para filtrar por Estado, Cidade ou CNJ
+- **Tela Sobre**: Toque no ícone ℹ️ para ver informações do app
+
+#### 📋 Lista de Cartórios
+- **Busca**: Digite para filtrar em tempo real
+- **Filtros**: Selecione entre Todos, UF, Cidade ou CNJ
+- **Favoritos**: Toque no coração (🤍/❤️) para adicionar/remover favoritos
+- **Ações**: Toque em "Ligar", "Email" ou "📄" para ver detalhes
+- **Paginação**: Navegue entre páginas com os controles na parte inferior
+
+#### 📄 Detalhes do Cartório
+- **Favorito**: Toque no coração no header para favoritar
+- **Traçar Rota**: Toque em "Traçar Rota" para abrir Google Maps/Waze
+- **Compartilhar**: Use os botões WhatsApp ou SMS para compartilhar
+- **Ligar/Email**: Toque nos botões para ações diretas
+
+#### ℹ️ Tela Sobre
+- **Informações da Base**: Veja data de atualização, versão e total de cartórios
+- **Sobre o App**: Descrição e características
+- **Funcionalidades**: Lista completa de recursos disponíveis
 
 ### No Dispositivo Físico
 
@@ -225,21 +293,29 @@ CartórioConnect/
 │
 ├── assets/                      # Recursos estáticos
 │   ├── data/
-│   │   └── cartoriosInterligados.json  # Base de dados dos cartórios
+│   │   ├── cartoriosInterligados.json  # Base de dados dos cartórios
+│   │   └── metadata.json        # Metadados (data de atualização, versão)
 │   └── images/
 │       └── logo.png             # Logo do aplicativo
 │
 └── src/
     ├── components/              # Componentes reutilizáveis
-    │   └── AdBanner.tsx         # Componente de anúncios flexível
+    │   └── AdBanner.tsx         # Componente de anúncios AdMob
     │
     ├── screens/                 # Telas do aplicativo
-    │   ├── HomeScreen.tsx       # Tela inicial
+    │   ├── HomeScreen.tsx       # Tela inicial (favoritos, recentes)
     │   ├── CartorioListScreen.tsx  # Lista de cartórios
-    │   └── CartorioDetailScreen.tsx # Detalhes do cartório
+    │   ├── CartorioDetailScreen.tsx # Detalhes do cartório
+    │   └── AboutScreen.tsx      # Tela Sobre/Configurações
     │
-    └── services/                # Serviços e lógica de negócio
-        └── cartorioService.ts   # Serviço de busca de cartórios
+    ├── services/                # Serviços e lógica de negócio
+    │   ├── cartorioService.ts   # Serviço de busca de cartórios
+    │   ├── storageService.ts    # Gerenciamento de favoritos e recentes
+    │   ├── locationService.ts  # Geolocalização e mapas
+    │   └── shareService.ts      # Compartilhamento (WhatsApp, SMS)
+    │
+    └── hooks/                   # Hooks customizados
+        └── useAppState.ts       # Gerenciamento de estado do app
 ```
 
 ### Descrição dos Arquivos Principais
@@ -253,17 +329,39 @@ Serviço responsável por:
 - Buscar cartórios por diferentes critérios
 - Cachear dados para melhor performance
 - Normalizar dados para garantir consistência
+- Obter metadados da base de dados (data de atualização, versão)
+
+#### `src/services/storageService.ts`
+Serviço de armazenamento local:
+- Gerenciar favoritos (adicionar, remover, listar)
+- Gerenciar histórico de buscas recentes
+- Usa AsyncStorage para persistência
+
+#### `src/services/locationService.ts`
+Serviço de geolocalização:
+- Solicitar permissões de localização
+- Obter localização atual do usuário
+- Abrir mapas (Google Maps, Waze) com endereço
+- Calcular distâncias (preparado para ordenação por proximidade)
+
+#### `src/services/shareService.ts`
+Serviço de compartilhamento:
+- Formatar dados do cartório para compartilhamento
+- Compartilhar via WhatsApp
+- Compartilhar via SMS
+- Formatação automática com emojis
 
 #### `src/components/AdBanner.tsx`
-Componente flexível para exibição de anúncios:
-- Suporta AdMob, imagens, HTML e conteúdo customizado
-- Responsivo e configurável
-- Não interfere na navegação
+Componente de anúncios Google AdMob:
+- Integração com react-native-google-mobile-ads
+- Suporta diferentes tamanhos de banner
+- Configuração automática para desenvolvimento/produção
 
 #### `src/screens/`
-- **HomeScreen**: Tela inicial com logo e botão de acesso
-- **CartorioListScreen**: Lista com busca, filtros e paginação
-- **CartorioDetailScreen**: Detalhes completos do cartório selecionado
+- **HomeScreen**: Tela inicial com favoritos, recentes, busca e data de atualização
+- **CartorioListScreen**: Lista com busca, filtros, paginação e favoritos
+- **CartorioDetailScreen**: Detalhes completos com favorito, traçar rota e compartilhamento
+- **AboutScreen**: Tela Sobre com informações do app e base de dados
 
 ---
 
@@ -296,29 +394,47 @@ Edite o arquivo `assets/data/cartoriosInterligados.json` com os dados atualizado
 ]
 ```
 
-### Configurar Anúncios
+### Atualizar Data de Última Atualização
 
-Edite os componentes `AdBanner` nas telas para configurar:
+Edite o arquivo `assets/data/metadata.json` para atualizar a data:
+
+```json
+{
+  "lastUpdate": "2025-12-12",
+  "version": "1.0.0",
+  "totalCartorios": 0,
+  "description": "Base de dados offline de cartórios interligados do Brasil"
+}
+```
+
+**Nota**: O campo `totalCartorios` será calculado automaticamente pelo app. O formato da data deve ser `YYYY-MM-DD`.
+
+### Configurar Google AdMob
+
+1. **Obter IDs de Unidade de Anúncio** no [Google AdMob Console](https://apps.admob.com/)
+
+2. **Atualizar `src/components/AdBanner.tsx`** com seus IDs:
 
 ```typescript
-<AdBanner
-  adType="image"  // ou 'admob', 'html', 'custom'
-  imageUri={require('../../assets/images/banner.png')}
-  position="bottom"
-  height={100}
-  onAdPress={() => console.log('Anúncio clicado')}
-/>
+const adUnitId = __DEV__ ? TestIds.BANNER : Platform.select({
+  ios: 'ca-app-pub-XXXXXXXXXXXXXXXX/XXXXXXXXXX',  // Seu ID iOS
+  android: 'ca-app-pub-XXXXXXXXXXXXXXXX/XXXXXXXXXX',  // Seu ID Android
+  default: TestIds.BANNER,
+});
 ```
+
+3. **O AdMob já está inicializado** em `App.tsx`
 
 ### Cores e Estilos
 
 As cores principais estão definidas nos arquivos de estilo:
 
-- **Azul Principal**: `#1a73e8`
-- **Azul Secundário**: `#4a90e2`
-- **Cinza Escuro**: `#2c2c2c`
-- **Cinza Claro**: `#e5e5e5`
-- **Fundo**: `#f8f9fa`
+- **Azul Principal**: `#1976D2`
+- **Azul Secundário**: `#E3F2FD`
+- **Fundo**: `#F0F4F8`
+- **Texto Escuro**: `#333333`
+- **Texto Sutil**: `#757575`
+- **Branco**: `#FFFFFF`
 
 ---
 
@@ -331,8 +447,11 @@ As cores principais estão definidas nos arquivos de estilo:
 | `npm run ios` | Abre no simulador iOS |
 | `npm run web` | Abre no navegador web |
 | `npm run build:android` | Build para Android (EAS) |
+| `npm run build:android:test` | Build de teste para Android |
 | `npm run build:ios` | Build para iOS (EAS) |
+| `npm run build:ios:test` | Build de teste para iOS |
 | `npm run push` | Git: adiciona, commita e faz push |
+| `npm run push:quick` | Git: push rápido (mesmo que push) |
 | `npm run pull` | Git: atualiza do repositório |
 
 ---
@@ -519,7 +638,14 @@ npx expo start -c
 - [Documentação Oficial do Expo](https://docs.expo.dev/)
 - [Guia de Início Rápido](https://docs.expo.dev/get-started/installation/)
 - [EAS Build](https://docs.expo.dev/build/introduction/)
-- [Expo SDK 49](https://docs.expo.dev/versions/v49.0.0/)
+- [Expo SDK 54](https://docs.expo.dev/versions/v54.0.0/)
+
+### Bibliotecas Utilizadas
+
+- [Google Mobile Ads](https://github.com/react-native-google-mobile-ads/react-native-google-mobile-ads) - Integração AdMob
+- [AsyncStorage](https://react-native-async-storage.github.io/async-storage/) - Armazenamento local
+- [Expo Location](https://docs.expo.dev/versions/latest/sdk/location/) - Geolocalização
+- [Expo Linking](https://docs.expo.dev/versions/latest/sdk/linking/) - Deep linking
 
 ### React Navigation
 

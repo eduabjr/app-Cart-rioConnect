@@ -7,7 +7,7 @@
  * Para usar: Copie este arquivo para src/screens/HomeScreen.tsx
  */
 
-import React, {useState} from 'react';
+import React, {useState, useEffect} from 'react';
 import {
   View,
   Text,
@@ -21,6 +21,12 @@ import {
 } from 'react-native';
 import {SafeAreaView, useSafeAreaInsets} from 'react-native-safe-area-context';
 import {useNavigation} from '@react-navigation/native';
+import {StackNavigationProp} from '@react-navigation/stack';
+import {RootStackParamList} from '../../App';
+import {storageService} from '../services/storageService';
+import {cartorioService, Cartorio} from '../services/cartorioService';
+import AdBanner from '../components/AdBanner';
+import {BannerAdSize} from 'react-native-google-mobile-ads';
 // Recomenda-se usar ícones vetoriais (Ex: @expo/vector-icons) para ícones,
 // mas vou usar emojis aqui para manter a simplicidade do seu código atual.
 
@@ -37,41 +43,93 @@ const COLORS = {
 // Altura da tela para o cálculo do fundo curvo
 const screenHeight = Dimensions.get('window').height;
 
+type HomeScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Home'>;
+
 const HomeScreen = () => {
-  const navigation = useNavigation();
+  const navigation = useNavigation<HomeScreenNavigationProp>();
   const [searchText, setSearchText] = useState('');
+  const [favorites, setFavorites] = useState<Cartorio[]>([]);
+  const [recentSearches, setRecentSearches] = useState<Cartorio[]>([]);
+  const [lastUpdate, setLastUpdate] = useState<string>('');
   
   // Obter os insets da área segura (status bar, notch, etc.)
   const insets = useSafeAreaInsets();
 
+  useEffect(() => {
+    loadFavoritesAndRecent();
+    loadLastUpdate();
+  }, []);
+
+  const loadFavoritesAndRecent = async () => {
+    try {
+      const [favs, recent] = await Promise.all([
+        storageService.getFavorites(),
+        storageService.getRecentSearches(),
+      ]);
+      setFavorites(favs.slice(0, 5)); // Limitar a 5 favoritos
+      // Extrair apenas os cartórios das buscas recentes
+      const recentCartorios = recent
+        .slice(0, 5)
+        .map(search => search.cartorio);
+      setRecentSearches(recentCartorios);
+    } catch (error) {
+      console.error('Erro ao carregar favoritos e recentes:', error);
+    }
+  };
+
+  const loadLastUpdate = async () => {
+    try {
+      const metadata = await cartorioService.getMetadata();
+      const formattedDate = cartorioService.formatLastUpdateDate(metadata.lastUpdate);
+      setLastUpdate(formattedDate);
+    } catch (error) {
+      console.error('Erro ao carregar data de atualização:', error);
+    }
+  };
+
   const handleSearch = () => {
     // Implemente a lógica de navegação/busca aqui
     console.log('Buscando por:', searchText);
-    // Navegação para a tela de lista
-    navigation.navigate('CartorioList' as never);
+    // Navegação para a tela de lista sem filtro específico
+    navigation.navigate('CartorioList', {filterType: 'all'});
   };
 
   const handleFilterBy = (type: 'estado' | 'cidade' | 'cnj') => {
-    // Implemente a lógica de navegação/filtro aqui
-    console.log('Filtrando por:', type);
-    // Navegação para a tela de lista
-    navigation.navigate('CartorioList' as never);
+    // Mapear 'estado' para 'uf' para corresponder ao filtro da lista
+    const filterType = type === 'estado' ? 'uf' : type;
+    console.log('Filtrando por:', filterType);
+    // Navegação para a tela de lista com o filtro correspondente
+    navigation.navigate('CartorioList', {filterType: filterType as 'uf' | 'cidade' | 'cnj'});
+  };
+
+  const handleCartorioPress = (cartorio: Cartorio) => {
+    navigation.navigate('CartorioDetail', {cartorio});
+  };
+
+  const handleViewAllFavorites = () => {
+    navigation.navigate('CartorioList', {filterType: 'all'});
   };
 
   return (
-    <View style={styles.container}>
-      {/* StatusBar transparente para que o conteúdo azul apareça por trás */}
+    <View style={[styles.container, {paddingTop: insets.top}]}>
+      {/* StatusBar - área de notificação totalmente visível */}
       <StatusBar 
-        barStyle="light-content" 
+        barStyle="dark-content" 
         backgroundColor="transparent" 
-        translucent={true}
+        translucent={false}
       />
       
-      {/* 1. Fundo Curvo Azul (Para a área do Header) - Começa após a status bar */}
-      <View style={[styles.blueBackground, {top: insets.top}]} />
+      {/* 1. Fundo Curvo Azul (Para a área do Header) - Começa APÓS a área de notificação */}
+      <View style={[
+        styles.blueBackground, 
+        {
+          top: insets.top, 
+          height: Platform.OS === 'ios' ? 220 : 180,
+        }
+      ]} />
 
       {/* 2. Top Bar e Título (Sobrepondo o fundo azul) - Respeita a área segura */}
-      <View style={[styles.topBar, {paddingTop: insets.top + 8}]}>
+      <View style={[styles.topBar, {paddingTop: 12, paddingBottom: 12}]}>
         <View style={styles.topBarLeft}>
           {/* Logo do App: Ícone e Título */}
           <View style={styles.topBarIconContainer}>
@@ -79,8 +137,10 @@ const HomeScreen = () => {
           </View>
           <Text style={styles.topBarTitle}>CartórioConnect</Text>
         </View>
-        <TouchableOpacity style={styles.menuButton}>
-          <Text style={styles.menuIcon}>⋮</Text>
+        <TouchableOpacity 
+          style={styles.menuButton}
+          onPress={() => navigation.navigate('About')}>
+          <Text style={styles.menuIcon}>ℹ️</Text>
         </TouchableOpacity>
       </View>
 
@@ -100,7 +160,76 @@ const HomeScreen = () => {
           <Text style={styles.offlineSubtitle}>
             Sua base de dados sempre com você.
           </Text>
+          {lastUpdate && (
+            <View style={styles.updateInfoContainer}>
+              <Text style={styles.updateInfoLabel}>Última atualização:</Text>
+              <Text style={styles.updateInfoDate}>{lastUpdate}</Text>
+            </View>
+          )}
         </View>
+
+        {/* Seção de Favoritos */}
+        {favorites.length > 0 && (
+          <View style={styles.sectionContainer}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>⭐ Favoritos</Text>
+              <TouchableOpacity onPress={handleViewAllFavorites}>
+                <Text style={styles.seeAllText}>Ver todos</Text>
+              </TouchableOpacity>
+            </View>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.horizontalScroll}>
+              {favorites.map((cartorio, index) => (
+                <TouchableOpacity
+                  key={cartorio.numeroCNJ || index}
+                  style={styles.favoriteCard}
+                  onPress={() => handleCartorioPress(cartorio)}>
+                  <Text style={styles.favoriteCardIcon}>🏢</Text>
+                  <Text style={styles.favoriteCardTitle} numberOfLines={2}>
+                    {cartorio.tituloCartorio}
+                  </Text>
+                  {cartorio.cidade && (
+                    <Text style={styles.favoriteCardCity} numberOfLines={1}>
+                      {cartorio.cidade} - {cartorio.uf}
+                    </Text>
+                  )}
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        )}
+
+        {/* Seção de Recentes */}
+        {recentSearches.length > 0 && (
+          <View style={styles.sectionContainer}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>🕒 Recentes</Text>
+            </View>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.horizontalScroll}>
+              {recentSearches.map((cartorio, index) => (
+                <TouchableOpacity
+                  key={cartorio.numeroCNJ || index}
+                  style={styles.recentCard}
+                  onPress={() => handleCartorioPress(cartorio)}>
+                  <Text style={styles.recentCardIcon}>📋</Text>
+                  <Text style={styles.recentCardTitle} numberOfLines={2}>
+                    {cartorio.tituloCartorio}
+                  </Text>
+                  {cartorio.cidade && (
+                    <Text style={styles.recentCardCity} numberOfLines={1}>
+                      {cartorio.cidade} - {cartorio.uf}
+                    </Text>
+                  )}
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        )}
 
         {/* Container de Busca e Filtros */}
         <View style={styles.mainContentArea}>
@@ -152,10 +281,11 @@ const HomeScreen = () => {
             />
           </View>
 
-          {/* Aqui pode entrar um placeholder para o anúncio */}
-          <View style={styles.adPlaceholder}>
-              <Text style={styles.adText}>Área para Banner de Anúncio</Text>
-          </View>
+          {/* Banner do Google AdMob */}
+          <AdBanner 
+            size={BannerAdSize.FULL_BANNER}
+            position="center"
+          />
         </View>
       </ScrollView>
     </View>
@@ -184,10 +314,10 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     width: '100%',
-    height: Platform.OS === 'ios' ? 220 : 180, // Altura que cobre o topo e parte do card
     backgroundColor: COLORS.primary,
     borderBottomLeftRadius: 30,
     borderBottomRightRadius: 30,
+    // A altura será calculada dinamicamente para incluir a status bar
   },
   // Top Bar (Fica sobreposto ao blueBackground)
   topBar: {
@@ -195,8 +325,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    minHeight: 60,
+    minHeight: 56,
     zIndex: 10, // Garantir que fique acima do fundo azul
+    position: 'relative',
   },
   topBarLeft: {
     flexDirection: 'row',
@@ -294,6 +425,25 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: COLORS.textSubtle,
     textAlign: 'center',
+    marginBottom: 12,
+  },
+  updateInfoContainer: {
+    marginTop: 16,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#e0e0e0',
+    alignItems: 'center',
+    width: '100%',
+  },
+  updateInfoLabel: {
+    fontSize: 12,
+    color: COLORS.textSubtle,
+    marginBottom: 4,
+  },
+  updateInfoDate: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: COLORS.primary,
   },
   // Container de Busca
   mainContentArea: {
@@ -407,7 +557,88 @@ const styles = StyleSheet.create({
   adText: {
       color: COLORS.textSubtle,
       fontSize: 14,
-  }
+  },
+  // Seções de Favoritos e Recentes
+  sectionContainer: {
+    width: '100%',
+    marginTop: 20,
+    paddingHorizontal: 16,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+    paddingHorizontal: 4,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: COLORS.textDark,
+  },
+  seeAllText: {
+    fontSize: 14,
+    color: COLORS.primary,
+    fontWeight: '600',
+  },
+  horizontalScroll: {
+    paddingRight: 16,
+  },
+  favoriteCard: {
+    backgroundColor: COLORS.white,
+    width: 160,
+    padding: 16,
+    borderRadius: 12,
+    marginRight: 12,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: {width: 0, height: 2},
+        shadowOpacity: 0.1,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 4,
+      },
+    }),
+  },
+  favoriteCardIcon: {
+    fontSize: 32,
+    marginBottom: 8,
+  },
+  favoriteCardTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: COLORS.textDark,
+    marginBottom: 4,
+  },
+  favoriteCardCity: {
+    fontSize: 12,
+    color: COLORS.textSubtle,
+  },
+  recentCard: {
+    backgroundColor: COLORS.secondary,
+    width: 160,
+    padding: 16,
+    borderRadius: 12,
+    marginRight: 12,
+    borderWidth: 1,
+    borderColor: COLORS.secondary,
+  },
+  recentCardIcon: {
+    fontSize: 32,
+    marginBottom: 8,
+  },
+  recentCardTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: COLORS.textDark,
+    marginBottom: 4,
+  },
+  recentCardCity: {
+    fontSize: 12,
+    color: COLORS.textSubtle,
+  },
 });
 
 export default HomeScreen;

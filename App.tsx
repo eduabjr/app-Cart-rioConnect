@@ -3,17 +3,20 @@ import {NavigationContainer} from '@react-navigation/native';
 import {createStackNavigator} from '@react-navigation/stack';
 import {StatusBar as ExpoStatusBar} from 'expo-status-bar';
 import {AppState, StatusBar, Platform} from 'react-native';
+import mobileAds from 'react-native-google-mobile-ads';
 import HomeScreen from './src/screens/HomeScreen';
 import CartorioListScreen from './src/screens/CartorioListScreen';
 import CartorioDetailScreen from './src/screens/CartorioDetailScreen';
+import AboutScreen from './src/screens/AboutScreen';
 import {useAppState} from './src/hooks/useAppState';
 import {pauseHeavyProcessing, resumeProcessing} from './src/utils/performanceOptimizer';
 import {Cartorio} from './src/services/cartorioService';
 
 export type RootStackParamList = {
   Home: undefined;
-  CartorioList: undefined;
+  CartorioList: {filterType?: 'uf' | 'cidade' | 'cnj' | 'all'};
   CartorioDetail: {cartorio: Cartorio};
+  About: undefined;
 };
 
 const Stack = createStackNavigator<RootStackParamList>();
@@ -23,6 +26,17 @@ const App = () => {
   useAppState();
 
   useEffect(() => {
+    // Inicializar o Google AdMob
+    mobileAds()
+      .initialize()
+      .then(adapterStatuses => {
+        console.log('✅ Google AdMob inicializado com sucesso');
+        console.log('Adapter statuses:', adapterStatuses);
+      })
+      .catch(error => {
+        console.error('❌ Erro ao inicializar Google AdMob:', error);
+      });
+
     // Listener para pausar processos quando o app vai para background
     const subscription = AppState.addEventListener('change', nextAppState => {
       if (nextAppState === 'background' || nextAppState === 'inactive') {
@@ -43,12 +57,12 @@ const App = () => {
     <NavigationContainer>
       {/* StatusBar do React Native para controle fino */}
       <StatusBar 
-        barStyle="light-content" 
+        barStyle="dark-content" 
         backgroundColor="transparent" 
-        translucent={true}
+        translucent={false}
       />
       {/* StatusBar do Expo para compatibilidade */}
-      <ExpoStatusBar style="light" backgroundColor="transparent" translucent />
+      <ExpoStatusBar style="dark" backgroundColor="transparent" translucent={false} />
       <Stack.Navigator
         initialRouteName="Home"
         screenOptions={{
@@ -73,6 +87,11 @@ const App = () => {
         <Stack.Screen
           name="CartorioDetail"
           component={CartorioDetailScreen}
+          options={{headerShown: false}}
+        />
+        <Stack.Screen
+          name="About"
+          component={AboutScreen}
           options={{headerShown: false}}
         />
       </Stack.Navigator>

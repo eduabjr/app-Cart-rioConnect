@@ -17,6 +17,13 @@ export interface Cartorio {
   email?: string;
 }
 
+export interface DatabaseMetadata {
+  lastUpdate: string;
+  version: string;
+  totalCartorios: number;
+  description: string;
+}
+
 class CartorioService {
   private cartoriosCache: Cartorio[] | null = null;
 
@@ -119,6 +126,57 @@ class CartorioService {
         c.responsavel?.toLowerCase().includes(termoLower) ||
         false,
     );
+  }
+
+  /**
+   * Obtém metadados da base de dados (data de última atualização, versão, etc.)
+   */
+  async getMetadata(): Promise<DatabaseMetadata> {
+    try {
+      const metadata = require('../../assets/data/metadata.json');
+      
+      // Se não tiver totalCartorios, calcular
+      if (!metadata.totalCartorios || metadata.totalCartorios === 0) {
+        const cartorios = await this.buscarTodosCartorios();
+        metadata.totalCartorios = cartorios.length;
+      }
+
+      return {
+        lastUpdate: metadata.lastUpdate || 'Data não disponível',
+        version: metadata.version || '1.0.0',
+        totalCartorios: metadata.totalCartorios || 0,
+        description: metadata.description || 'Base de dados offline de cartórios interligados do Brasil',
+      };
+    } catch (error) {
+      console.error('Erro ao carregar metadados:', error);
+      // Retorna valores padrão em caso de erro
+      return {
+        lastUpdate: 'Data não disponível',
+        version: '1.0.0',
+        totalCartorios: 0,
+        description: 'Base de dados offline de cartórios interligados do Brasil',
+      };
+    }
+  }
+
+  /**
+   * Formata a data de última atualização para exibição
+   */
+  formatLastUpdateDate(dateString: string): string {
+    try {
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) {
+        return dateString; // Retorna a string original se não for uma data válida
+      }
+      
+      const day = date.getDate().toString().padStart(2, '0');
+      const month = (date.getMonth() + 1).toString().padStart(2, '0');
+      const year = date.getFullYear();
+      
+      return `${day}/${month}/${year}`;
+    } catch (error) {
+      return dateString;
+    }
   }
 }
 

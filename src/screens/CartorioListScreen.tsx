@@ -7,33 +7,91 @@ import {
   TextInput,
   TouchableOpacity,
   ActivityIndicator,
-  Alert,
   StatusBar,
+  Platform,
+  Alert,
 } from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
-import * as Clipboard from 'expo-clipboard';
 import * as Linking from 'expo-linking';
-import {useNavigation} from '@react-navigation/native';
+import {useNavigation, useRoute, RouteProp} from '@react-navigation/native';
+import {StackNavigationProp} from '@react-navigation/stack';
+import {RootStackParamList} from '../../App';
 import {cartorioService, Cartorio} from '../services/cartorioService';
+import {storageService} from '../services/storageService';
+import {locationService, CartorioWithDistance} from '../services/locationService';
+
+// Cores principais do design (igual à HomeScreen):
+const COLORS = {
+  primary: '#1976D2', // Azul Principal
+  secondary: '#E3F2FD', // Azul Claro para cards de filtro
+  background: '#F0F4F8', // Fundo cinza claro/azul suave
+  white: '#FFFFFF',
+  textDark: '#333333',
+  textSubtle: '#757575',
+};
+
+type CartorioListScreenRouteProp = RouteProp<RootStackParamList, 'CartorioList'>;
+type CartorioListScreenNavigationProp = StackNavigationProp<RootStackParamList, 'CartorioList'>;
 
 const CartorioListScreen = () => {
-  const navigation = useNavigation();
+  const route = useRoute<CartorioListScreenRouteProp>();
+  const navigation = useNavigation<CartorioListScreenNavigationProp>();
   const insets = useSafeAreaInsets();
   const [cartorios, setCartorios] = useState<Cartorio[]>([]);
   const [filteredCartorios, setFilteredCartorios] = useState<Cartorio[]>([]);
   const [searchText, setSearchText] = useState('');
   const [loading, setLoading] = useState(true);
-  const [filterType, setFilterType] = useState<'all' | 'uf' | 'cidade' | 'cnj'>('all');
+  const [favorites, setFavorites] = useState<Set<string>>(new Set());
+  const [sortByProximity, setSortByProximity] = useState(false);
+  const [userLocation, setUserLocation] = useState<{latitude: number; longitude: number} | null>(null);
+  // Inicializar o filtro com o valor recebido via navegação, ou 'all' como padrão
+  const [filterType, setFilterType] = useState<'all' | 'uf' | 'cidade' | 'cnj'>(
+    route.params?.filterType || 'all'
+  );
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
   useEffect(() => {
     loadCartorios();
+    loadFavorites();
+    requestLocationIfNeeded();
   }, []);
+
+  // Atualizar o filtro quando os parâmetros da rota mudarem
+  useEffect(() => {
+    if (route.params?.filterType) {
+      setFilterType(route.params.filterType);
+    }
+  }, [route.params]);
 
   useEffect(() => {
     filterCartorios();
-  }, [searchText, cartorios, filterType]);
+  }, [searchText, cartorios, filterType, sortByProximity, userLocation]);
+
+  const loadFavorites = async () => {
+    try {
+      const favs = await storageService.getFavorites();
+      const favSet = new Set(favs.map(f => f.numeroCNJ || ''));
+      setFavorites(favSet);
+    } catch (error) {
+      console.error('Erro ao carregar favoritos:', error);
+    }
+  };
+
+  const requestLocationIfNeeded = async () => {
+    try {
+      const hasPermission = await locationService.hasPermission();
+      if (hasPermission) {
+        const location = await locationService.getCurrentLocation();
+        if (location) {
+          setUserLocation(location);
+          setSortByProximity(true);
+        }
+      }
+    } catch (error) {
+      console.error('Erro ao obter localização:', error);
+    }
+  };
 
   const loadCartorios = async () => {
     try {
@@ -48,42 +106,70 @@ const CartorioListScreen = () => {
     }
   };
 
-  const filterCartorios = () => {
-    if (searchText.trim() === '') {
-      setFilteredCartorios(cartorios);
-      return;
-    }
-
+  const filterCartorios = async () => {
     let filtered = cartorios;
 
-    switch (filterType) {
-      case 'uf':
-        filtered = cartorios.filter(c =>
-          c.uf?.toLowerCase().includes(searchText.toLowerCase())
-        );
-        break;
-      case 'cidade':
-        filtered = cartorios.filter(c =>
-          c.cidade?.toLowerCase().includes(searchText.toLowerCase())
-        );
-        break;
-      case 'cnj':
-        filtered = cartorios.filter(c =>
-          c.numeroCNJ?.includes(searchText)
-        );
-        break;
-      default:
-        filtered = cartorios.filter(
-          c =>
-            c.tituloCartorio?.toLowerCase().includes(searchText.toLowerCase()) ||
-            c.cidade?.toLowerCase().includes(searchText.toLowerCase()) ||
-            c.uf?.toLowerCase().includes(searchText.toLowerCase()) ||
+    // Aplicar filtro de busca se houver texto
+    if (searchText.trim() !== '') {
+      switch (filterType) {
+        case 'uf':
+          filtered = cartorios.filter(c =>
+            c.uf?.toLowerCase().includes(searchText.toLowerCase())
+          );
+          break;
+        case 'cidade':
+          filtered = cartorios.filter(c =>
+            c.cidade?.toLowerCase().includes(searchText.toLowerCase())
+          );
+          break;
+        case 'cnj':
+          filtered = cartorios.filter(c =>
             c.numeroCNJ?.includes(searchText)
-        );
+          );
+          break;
+        default:
+          filtered = cartorios.filter(
+            c =>
+              c.tituloCartorio?.toLowerCase().includes(searchText.toLowerCase()) ||
+              c.cidade?.toLowerCase().includes(searchText.toLowerCase()) ||
+              c.uf?.toLowerCase().includes(searchText.toLowerCase()) ||
+              c.numeroCNJ?.includes(searchText)
+          );
+      }
+    }
+
+    // Ordenar por proximidade se a localização estiver disponível
+    if (sortByProximity && userLocation) {
+      // Por enquanto, apenas marca que está ordenado por proximidade
+      // A ordenação real requereria coordenadas dos cartórios (geocoding)
+      // Por enquanto, mantém a ordem original
     }
 
     setFilteredCartorios(filtered);
     setCurrentPage(1);
+  };
+
+  const handleToggleFavorite = async (cartorio: Cartorio) => {
+    try {
+      if (!cartorio.numeroCNJ) return;
+
+      const isFavorite = favorites.has(cartorio.numeroCNJ);
+      
+      if (isFavorite) {
+        await storageService.removeFavorite(cartorio.numeroCNJ);
+        const newFavorites = new Set(favorites);
+        newFavorites.delete(cartorio.numeroCNJ);
+        setFavorites(newFavorites);
+      } else {
+        await storageService.addFavorite(cartorio);
+        const newFavorites = new Set(favorites);
+        newFavorites.add(cartorio.numeroCNJ);
+        setFavorites(newFavorites);
+      }
+    } catch (error) {
+      console.error('Erro ao alternar favorito:', error);
+      Alert.alert('Erro', 'Não foi possível atualizar o favorito.');
+    }
   };
 
   const handleCall = (phone: string) => {
@@ -94,143 +180,125 @@ const CartorioListScreen = () => {
     Linking.openURL(`mailto:${email}`);
   };
 
-  const copyToClipboard = async (text: string, type: string) => {
-    try {
-      await Clipboard.setStringAsync(text);
-      Alert.alert('Copiado!', `${type} copiado para a área de transferência.`);
-    } catch (error) {
-      Alert.alert('Erro', 'Não foi possível copiar.');
-    }
-  };
-
   const totalPages = Math.ceil(filteredCartorios.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
   const paginatedCartorios = filteredCartorios.slice(startIndex, endIndex);
 
-  const renderItem = ({item}: {item: Cartorio}) => (
-    <View style={styles.card}>
-      <View style={styles.cardHeader}>
-        <View style={styles.cardIconContainer}>
-          <Text style={styles.cardIcon}>📋</Text>
+  const renderItem = ({item}: {item: Cartorio}) => {
+    const isFavorite = item.numeroCNJ ? favorites.has(item.numeroCNJ) : false;
+    
+    return (
+      <View style={styles.card}>
+        <View style={styles.cardHeader}>
+          <View style={styles.cardHeaderLeft}>
+            <Text style={styles.cardTitle} numberOfLines={2}>
+              {item.tituloCartorio}
+            </Text>
+            {item.numeroCNJ && (
+              <Text style={styles.cardCNJ}>CNJ: {item.numeroCNJ}</Text>
+            )}
+          </View>
+          <TouchableOpacity
+            style={styles.favoriteButton}
+            onPress={() => handleToggleFavorite(item)}>
+            <Text style={styles.favoriteIcon}>
+              {isFavorite ? '❤️' : '🤍'}
+            </Text>
+          </TouchableOpacity>
         </View>
-        <View style={styles.cardHeaderText}>
-          <Text style={styles.cardTitle} numberOfLines={2}>
-            {item.tituloCartorio}
-          </Text>
-          {item.uf && (
-            <View style={styles.badgeContainer}>
-              <Text style={styles.badgeText}>{item.uf}</Text>
-            </View>
-          )}
-        </View>
-      </View>
 
-      {item.numeroCNJ && (
-        <View style={styles.cnjContainer}>
-          <Text style={styles.cnjLabel}>CNJ:</Text>
-          <Text style={styles.cnjValue}>{item.numeroCNJ}</Text>
-        </View>
-      )}
+        <Text style={styles.cardAddress}>
+          {item.endereco}
+          {item.numero && `, ${item.numero}`}
+          {item.bairro && ` - ${item.bairro}`}
+        </Text>
+        <Text style={styles.cardAddress}>
+          {item.cidade} - {item.uf}
+        </Text>
 
-      <View style={styles.divider} />
-
-      <View style={styles.addressContainer}>
-        <Text style={styles.addressIcon}>📍</Text>
-        <View style={styles.addressTextContainer}>
-          <Text style={styles.addressText}>
-            {item.endereco}
-            {item.numero && `, ${item.numero}`}
-            {item.bairro && ` - ${item.bairro}`}
-          </Text>
-          <Text style={styles.addressText}>
-            {item.cidade} - {item.uf}
-          </Text>
-        </View>
-      </View>
-
-      <View style={styles.actionsContainer}>
-        {item.telefone && (
-          <>
+        <View style={styles.cardActions}>
+          {item.telefone && (
             <TouchableOpacity
-              style={styles.primaryButton}
+              style={styles.actionButton}
               onPress={() => handleCall(item.telefone || '')}>
-              <Text style={styles.buttonIcon}>📞</Text>
-              <Text style={styles.primaryButtonText}>Ligar</Text>
+              <Text style={styles.actionButtonIcon}>📞</Text>
+              <Text style={styles.actionButtonText}>Ligar</Text>
             </TouchableOpacity>
+          )}
+          {item.email && (
             <TouchableOpacity
-              style={styles.secondaryButton}
-              onPress={() => copyToClipboard(item.telefone || '', 'Telefone')}>
-              <Text style={styles.buttonIcon}>📋</Text>
-              <Text style={styles.secondaryButtonText}>Copiar</Text>
-            </TouchableOpacity>
-          </>
-        )}
-        {item.email && (
-          <>
-            <TouchableOpacity
-              style={styles.primaryButton}
+              style={styles.actionButton}
               onPress={() => handleEmail(item.email || '')}>
-              <Text style={styles.buttonIcon}>✉️</Text>
-              <Text style={styles.primaryButtonText}>Email</Text>
+              <Text style={styles.actionButtonIcon}>✉️</Text>
+              <Text style={styles.actionButtonText}>Email</Text>
             </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.secondaryButton}
-              onPress={() => copyToClipboard(item.email || '', 'Email')}>
-              <Text style={styles.buttonIcon}>📋</Text>
-              <Text style={styles.secondaryButtonText}>Copiar</Text>
-            </TouchableOpacity>
-          </>
-        )}
-        <TouchableOpacity
-          style={styles.detailsButton}
-          onPress={() =>
-            navigation.navigate('CartorioDetail', {cartorio: item} as never)
-          }>
-          <Text style={styles.detailsButtonText}>Ver Detalhes</Text>
-          <Text style={styles.detailsArrow}>→</Text>
-        </TouchableOpacity>
+          )}
+          <TouchableOpacity
+            style={styles.detailsButton}
+            onPress={() =>
+              navigation.navigate('CartorioDetail', {cartorio: item} as never)
+            }>
+            <Text style={styles.detailsIcon}>📄</Text>
+          </TouchableOpacity>
+        </View>
       </View>
-    </View>
-  );
+    );
+  };
 
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#667eea" />
+        <ActivityIndicator size="large" color={COLORS.primary} />
         <Text style={styles.loadingText}>Carregando cartórios...</Text>
       </View>
     );
   }
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, {paddingTop: insets.top}]}>
+      {/* StatusBar - área de notificação totalmente visível */}
       <StatusBar 
-        barStyle="light-content" 
+        barStyle="dark-content" 
         backgroundColor="transparent" 
-        translucent={true}
+        translucent={false}
       />
-      {/* Header Moderno */}
-      <View style={[styles.header, {paddingTop: insets.top + 16}]}>
+      
+      {/* Fundo Curvo Azul (igual à HomeScreen) */}
+      <View style={[
+        styles.blueBackground, 
+        {
+          top: insets.top, 
+          height: Platform.OS === 'ios' ? 220 : 180,
+        }
+      ]} />
+
+      {/* Top Bar (igual à HomeScreen) */}
+      <View style={[styles.topBar, {paddingTop: 12, paddingBottom: 12}]}>
         <TouchableOpacity
           style={styles.backButton}
           onPress={() => navigation.goBack()}>
           <Text style={styles.backIcon}>←</Text>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>CartórioConnect</Text>
-        <View style={styles.headerRight}>
-          <Text style={styles.headerIcon}>⚖️</Text>
+        <View style={styles.topBarLeft}>
+          <View style={styles.topBarIconContainer}>
+            <Text style={styles.topBarIcon}>🏢</Text>
+          </View>
+          <Text style={styles.topBarTitle}>CartórioConnect</Text>
+        </View>
+        <View style={styles.menuButton}>
+          <Text style={styles.menuIcon}>⋮</Text>
         </View>
       </View>
 
-      {/* Barra de Busca Moderna */}
+      {/* Barra de Busca */}
       <View style={styles.searchContainer}>
-        <View style={styles.searchBar}>
+        <View style={styles.searchInputWrapper}>
           <Text style={styles.searchIcon}>🔍</Text>
           <TextInput
             style={styles.searchInput}
             placeholder="Buscar cartórios..."
-            placeholderTextColor="#a0aec0"
+            placeholderTextColor="#999"
             value={searchText}
             onChangeText={setSearchText}
           />
@@ -240,7 +308,7 @@ const CartorioListScreen = () => {
             </TouchableOpacity>
           )}
         </View>
-        <View style={styles.filterContainer}>
+        <View style={styles.filterButtons}>
           <TouchableOpacity
             style={[
               styles.filterButton,
@@ -310,7 +378,6 @@ const CartorioListScreen = () => {
         contentContainerStyle={styles.list}
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
-            <Text style={styles.emptyIcon}>🔍</Text>
             <Text style={styles.emptyText}>Nenhum cartório encontrado</Text>
           </View>
         }
@@ -348,86 +415,113 @@ const CartorioListScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f7fa',
+    backgroundColor: COLORS.background,
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#f5f7fa',
+    backgroundColor: COLORS.background,
   },
   loadingText: {
     marginTop: 12,
     fontSize: 16,
-    color: '#718096',
-    fontWeight: '500',
+    color: COLORS.textSubtle,
   },
-  header: {
-    backgroundColor: '#667eea',
+  // Fundo Curvo Azul (igual à HomeScreen)
+  blueBackground: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    width: '100%',
+    backgroundColor: COLORS.primary,
+    borderBottomLeftRadius: 30,
+    borderBottomRightRadius: 30,
+  },
+  // Top Bar (igual à HomeScreen)
+  topBar: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingBottom: 16,
+    paddingHorizontal: 16,
+    minHeight: 56,
     zIndex: 10,
+    position: 'relative',
   },
   backButton: {
     padding: 8,
   },
   backIcon: {
     fontSize: 24,
-    color: '#ffffff',
+    color: COLORS.white,
     fontWeight: 'bold',
   },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#ffffff',
-    flex: 1,
-    textAlign: 'center',
-    letterSpacing: 0.5,
-  },
-  headerRight: {
+  topBarLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    width: 40,
+    flex: 1,
+    justifyContent: 'center',
   },
-  headerIcon: {
-    fontSize: 22,
+  topBarIconContainer: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 8,
   },
+  topBarIcon: {
+    fontSize: 18,
+    color: COLORS.white,
+  },
+  topBarTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: COLORS.white,
+  },
+  menuButton: {
+    padding: 8,
+  },
+  menuIcon: {
+    fontSize: 24,
+    color: COLORS.white,
+    fontWeight: 'bold',
+  },
+  // Barra de Busca
   searchContainer: {
-    backgroundColor: '#ffffff',
+    backgroundColor: COLORS.white,
     padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#e2e8f0',
+    borderBottomColor: '#e0e0e0',
   },
-  searchBar: {
+  searchInputWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#f7fafc',
+    backgroundColor: COLORS.white,
     borderRadius: 12,
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingVertical: Platform.OS === 'ios' ? 14 : 4,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: '#e2e8f0',
+    borderColor: '#e0e0e0',
   },
   searchIcon: {
     fontSize: 18,
-    marginRight: 10,
+    marginRight: 12,
+    color: '#999',
   },
   searchInput: {
     flex: 1,
     fontSize: 16,
-    color: '#2d3748',
-    padding: 0,
+    color: COLORS.textDark,
+    paddingVertical: Platform.OS === 'android' ? 10 : 0,
   },
   clearIcon: {
     fontSize: 18,
-    color: '#a0aec0',
-    padding: 4,
+    color: '#999',
   },
-  filterContainer: {
+  filterButtons: {
     flexDirection: 'row',
     gap: 8,
   },
@@ -435,230 +529,151 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
-    backgroundColor: '#f7fafc',
+    backgroundColor: COLORS.secondary,
     borderWidth: 1,
-    borderColor: '#e2e8f0',
+    borderColor: COLORS.secondary,
   },
   filterButtonActive: {
-    backgroundColor: '#667eea',
-    borderColor: '#667eea',
+    backgroundColor: COLORS.primary,
+    borderColor: COLORS.primary,
   },
   filterButtonText: {
-    fontSize: 13,
-    color: '#718096',
+    fontSize: 14,
+    color: COLORS.primary,
     fontWeight: '600',
   },
   filterButtonTextActive: {
-    color: '#ffffff',
+    color: COLORS.white,
   },
+  // Lista
   list: {
     padding: 16,
     paddingBottom: 100,
   },
+  // Cards (estilo similar à HomeScreen)
   card: {
-    backgroundColor: '#ffffff',
-    padding: 20,
-    borderRadius: 16,
-    marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: {width: 0, height: 2},
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 3,
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
+    backgroundColor: COLORS.white,
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 12,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: {width: 0, height: 2},
+        shadowOpacity: 0.1,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 4,
+      },
+    }),
   },
   cardHeader: {
     flexDirection: 'row',
-    marginBottom: 12,
-  },
-  cardIconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: '#e3f2fd',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  cardIcon: {
-    fontSize: 22,
-  },
-  cardHeaderText: {
-    flex: 1,
-    flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
+    marginBottom: 8,
+  },
+  cardHeaderLeft: {
+    flex: 1,
+    marginRight: 8,
   },
   cardTitle: {
-    fontSize: 17,
-    fontWeight: '700',
-    color: '#2d3748',
-    flex: 1,
-    lineHeight: 24,
-  },
-  badgeContainer: {
-    backgroundColor: '#667eea',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-    marginLeft: 8,
-  },
-  badgeText: {
-    color: '#ffffff',
-    fontSize: 11,
-    fontWeight: '700',
-  },
-  cnjContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 12,
-    paddingVertical: 6,
-  },
-  cnjLabel: {
-    fontSize: 13,
-    color: '#718096',
-    fontWeight: '600',
-    marginRight: 6,
-  },
-  cnjValue: {
-    fontSize: 13,
-    color: '#2d3748',
-    fontWeight: '500',
-  },
-  divider: {
-    height: 1,
-    backgroundColor: '#e2e8f0',
-    marginVertical: 12,
-  },
-  addressContainer: {
-    flexDirection: 'row',
-    marginBottom: 16,
-  },
-  addressIcon: {
     fontSize: 18,
-    marginRight: 10,
-    marginTop: 2,
-  },
-  addressTextContainer: {
-    flex: 1,
-  },
-  addressText: {
-    fontSize: 14,
-    color: '#4a5568',
-    lineHeight: 20,
+    fontWeight: 'bold',
+    color: COLORS.textDark,
     marginBottom: 4,
   },
-  actionsContainer: {
+  favoriteButton: {
+    padding: 4,
+  },
+  favoriteIcon: {
+    fontSize: 24,
+  },
+  cardCNJ: {
+    fontSize: 14,
+    color: COLORS.textSubtle,
+    marginBottom: 8,
+  },
+  cardAddress: {
+    fontSize: 14,
+    color: COLORS.textSubtle,
+    marginBottom: 4,
+  },
+  cardActions: {
     flexDirection: 'row',
     flexWrap: 'wrap',
+    marginTop: 12,
     gap: 8,
+    alignItems: 'center',
   },
-  primaryButton: {
-    backgroundColor: '#667eea',
+  actionButton: {
+    backgroundColor: COLORS.primary,
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
     gap: 6,
   },
-  primaryButtonText: {
-    color: '#ffffff',
+  actionButtonText: {
+    color: COLORS.white,
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: '500',
   },
-  secondaryButton: {
-    backgroundColor: '#f7fafc',
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 10,
-    gap: 6,
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
-  },
-  secondaryButtonText: {
-    color: '#4a5568',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  buttonIcon: {
+  actionButtonIcon: {
     fontSize: 16,
+    color: COLORS.white,
   },
   detailsButton: {
-    flex: 1,
-    backgroundColor: '#f7fafc',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 10,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
-    minWidth: 120,
+    marginLeft: 'auto',
+    padding: 8,
   },
-  detailsButtonText: {
-    color: '#667eea',
-    fontSize: 14,
-    fontWeight: '600',
-    marginRight: 4,
-  },
-  detailsArrow: {
-    color: '#667eea',
-    fontSize: 16,
-    fontWeight: 'bold',
+  detailsIcon: {
+    fontSize: 20,
+    color: COLORS.primary,
   },
   emptyContainer: {
-    padding: 60,
+    padding: 40,
     alignItems: 'center',
-  },
-  emptyIcon: {
-    fontSize: 48,
-    marginBottom: 16,
-    opacity: 0.5,
   },
   emptyText: {
     fontSize: 16,
-    color: '#a0aec0',
-    fontWeight: '500',
+    color: COLORS.textSubtle,
   },
+  // Paginação
   paginationContainer: {
     position: 'absolute',
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: '#ffffff',
+    backgroundColor: COLORS.white,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 16,
-    paddingHorizontal: 20,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
     borderTopWidth: 1,
-    borderTopColor: '#e2e8f0',
-    gap: 20,
+    borderTopColor: '#e0e0e0',
+    gap: 16,
   },
   pageButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 10,
-    backgroundColor: '#f7fafc',
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    backgroundColor: COLORS.secondary,
   },
   pageButtonDisabled: {
     opacity: 0.4,
   },
   pageButtonText: {
     fontSize: 18,
-    color: '#667eea',
-    fontWeight: '700',
+    color: COLORS.primary,
+    fontWeight: 'bold',
   },
   pageInfo: {
     fontSize: 14,
-    color: '#718096',
-    fontWeight: '600',
+    color: COLORS.textSubtle,
   },
 });
 
