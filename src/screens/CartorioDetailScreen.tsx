@@ -106,39 +106,13 @@ const CartorioDetailScreen = () => {
     }
   };
 
-  const handleShare = async (method: 'whatsapp' | 'sms') => {
+  const handleShareWhatsApp = async () => {
     try {
-      if (method === 'whatsapp') {
-        await shareService.shareViaWhatsApp(cartorio);
-      } else {
-        await shareService.shareViaSMS(cartorio);
-      }
+      await shareService.shareViaWhatsApp(cartorio);
     } catch (error) {
-      console.error(`Erro ao compartilhar via ${method}:`, error);
-      Alert.alert('Erro', `Não foi possível compartilhar via ${method === 'whatsapp' ? 'WhatsApp' : 'SMS'}.`);
+      console.error('Erro ao compartilhar via WhatsApp:', error);
+      Alert.alert('Erro', 'Não foi possível compartilhar via WhatsApp.');
     }
-  };
-
-  const showShareOptions = () => {
-    Alert.alert(
-      'Compartilhar Cartório',
-      'Escolha como deseja compartilhar:',
-      [
-        {
-          text: 'WhatsApp',
-          onPress: () => handleShare('whatsapp'),
-        },
-        {
-          text: 'SMS',
-          onPress: () => handleShare('sms'),
-        },
-        {
-          text: 'Cancelar',
-          style: 'cancel',
-        },
-      ],
-      {cancelable: true}
-    );
   };
 
   return (
@@ -312,16 +286,16 @@ const CartorioDetailScreen = () => {
               <TouchableOpacity
                 style={styles.shareButton}
                 activeOpacity={0.8}
-                onPress={() => handleShare('whatsapp')}>
+                onPress={handleShareWhatsApp}>
                 <Text style={styles.shareButtonIcon}>💬</Text>
                 <Text style={styles.shareButtonText}>WhatsApp</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={styles.shareButton}
                 activeOpacity={0.8}
-                onPress={() => handleShare('sms')}>
-                <Text style={styles.shareButtonIcon}>📱</Text>
-                <Text style={styles.shareButtonText}>SMS</Text>
+                onPress={handleOpenMaps}>
+                <Text style={styles.shareButtonIcon}>🗺️</Text>
+                <Text style={styles.shareButtonText}>Traçar Rota</Text>
               </TouchableOpacity>
             </View>
           </View>
