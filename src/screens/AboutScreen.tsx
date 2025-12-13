@@ -13,6 +13,7 @@ import {
   StatusBar,
   Platform,
   ActivityIndicator,
+  Alert,
 } from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {useNavigation} from '@react-navigation/native';
@@ -22,7 +23,7 @@ import {cartorioService, DatabaseMetadata} from '../services/cartorioService';
 
 // Cores principais do design (igual à HomeScreen):
 const COLORS = {
-  primary: '#1976D2', // Azul Principal
+  primary: '#273d54', // Azul Escuro Principal
   secondary: '#E3F2FD', // Azul Claro para cards de filtro
   background: '#F0F4F8', // Fundo cinza claro/azul suave
   white: '#FFFFFF',
@@ -37,6 +38,8 @@ const AboutScreen = () => {
   const insets = useSafeAreaInsets();
   const [metadata, setMetadata] = useState<DatabaseMetadata | null>(null);
   const [loading, setLoading] = useState(true);
+  const [updating, setUpdating] = useState(false);
+  const [updateStats, setUpdateStats] = useState<{[key: string]: number} | null>(null);
 
   useEffect(() => {
     loadMetadata();
@@ -50,6 +53,47 @@ const AboutScreen = () => {
       console.error('Erro ao carregar metadados:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleRecarregarDados = async () => {
+    setUpdating(true);
+    setUpdateStats(null);
+    
+    try {
+      const resultado = await cartorioService.recarregarTodosArquivos();
+      
+      if (resultado.sucesso) {
+        setUpdateStats(resultado.porTipo);
+        
+        // Atualizar metadata com novo total
+        setMetadata(prev => prev ? {
+          ...prev,
+          totalCartorios: resultado.total,
+          lastUpdate: new Date().toISOString(),
+        } : null);
+
+        Alert.alert(
+          '✅ Sucesso',
+          resultado.mensagem,
+          [{text: 'OK'}]
+        );
+      } else {
+        Alert.alert(
+          '❌ Erro',
+          resultado.mensagem,
+          [{text: 'OK'}]
+        );
+      }
+    } catch (error) {
+      console.error('Erro ao recarregar dados:', error);
+      Alert.alert(
+        '❌ Erro',
+        'Ocorreu um erro ao recarregar os dados.',
+        [{text: 'OK'}]
+      );
+    } finally {
+      setUpdating(false);
     }
   };
 
@@ -124,15 +168,54 @@ const AboutScreen = () => {
                 />
                 <InfoRow 
                   label="Total de Cartórios" 
-                  value={metadata?.totalCartorios.toString() || '0'}
+                  value={metadata && metadata.totalCartorios ? metadata.totalCartorios.toString() : '0'}
                 />
                 <InfoRow 
                   label="Versão da Base" 
-                  value={metadata?.version || '1.0.0'}
+                  value={metadata && metadata.version ? metadata.version : '1.0.0'}
                 />
               </View>
             )}
+            
+            {/* Botão de Atualização */}
+            <TouchableOpacity
+              style={styles.updateButton}
+              onPress={handleRecarregarDados}
+              disabled={updating}
+              activeOpacity={0.8}>
+              {updating ? (
+                <View style={styles.updateButtonContent}>
+                  <ActivityIndicator size="small" color={COLORS.white} />
+                  <Text style={styles.updateButtonText}>Recarregando...</Text>
+                </View>
+              ) : (
+                <View style={styles.updateButtonContent}>
+                  <Text style={styles.updateButtonIcon}>🔄</Text>
+                  <Text style={styles.updateButtonText}>Recarregar Dados</Text>
+                </View>
+              )}
+            </TouchableOpacity>
           </View>
+          
+          {/* Estatísticas por Tipo (exibido após atualização) */}
+          {updateStats && (
+            <View style={styles.section}>
+              <View style={styles.sectionHeader}>
+                <View style={styles.sectionIconContainer}>
+                  <Text style={styles.sectionIcon}>📈</Text>
+                </View>
+                <Text style={styles.sectionLabel}>Cartórios por Tipo</Text>
+              </View>
+              <View style={styles.statsContainer}>
+                {Object.entries(updateStats).map(([tipo, quantidade]) => (
+                  <View key={tipo} style={styles.statRow}>
+                    <Text style={styles.statLabel}>{tipo}</Text>
+                    <Text style={styles.statValue}>{quantidade}</Text>
+                  </View>
+                ))}
+              </View>
+            </View>
+          )}
 
           {/* Descrição */}
           <View style={styles.section}>
@@ -401,6 +484,59 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: COLORS.textDark,
     flex: 1,
+  },
+  // Botão de Atualização
+  updateButton: {
+    backgroundColor: COLORS.primary,
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    borderRadius: 12,
+    marginTop: 16,
+    shadowColor: Platform.OS === 'ios' ? COLORS.primary : undefined,
+    shadowOffset: Platform.OS === 'ios' ? {width: 0, height: 4} : undefined,
+    shadowOpacity: Platform.OS === 'ios' ? 0.3 : undefined,
+    shadowRadius: Platform.OS === 'ios' ? 8 : undefined,
+    elevation: Platform.OS === 'android' ? 6 : undefined,
+  },
+  updateButtonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  updateButtonIcon: {
+    fontSize: 20,
+    marginRight: 10,
+  },
+  updateButtonText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: COLORS.white,
+  },
+  // Estatísticas por Tipo
+  statsContainer: {
+    backgroundColor: COLORS.secondary,
+    padding: 16,
+    borderRadius: 12,
+    borderLeftWidth: 4,
+    borderLeftColor: '#4CAF50',
+  },
+  statRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0,0,0,0.05)',
+  },
+  statLabel: {
+    fontSize: 14,
+    color: COLORS.textDark,
+    fontWeight: '500',
+  },
+  statValue: {
+    fontSize: 16,
+    color: COLORS.primary,
+    fontWeight: '700',
   },
 });
 

@@ -18,6 +18,7 @@ import {
   Platform,
   Dimensions,
   StatusBar,
+  Image,
 } from 'react-native';
 import {SafeAreaView, useSafeAreaInsets} from 'react-native-safe-area-context';
 import {useNavigation} from '@react-navigation/native';
@@ -26,13 +27,14 @@ import {RootStackParamList} from '../../App';
 import {storageService} from '../services/storageService';
 import {cartorioService, Cartorio} from '../services/cartorioService';
 import AdBanner from '../components/AdBanner';
-import {BannerAdSize} from 'react-native-google-mobile-ads';
+import FooterBanner from '../components/FooterBanner';
+// import {BannerAdSize} from 'react-native-google-mobile-ads'; // Comentado - requer build nativo
 // Recomenda-se usar ícones vetoriais (Ex: @expo/vector-icons) para ícones,
 // mas vou usar emojis aqui para manter a simplicidade do seu código atual.
 
 // Cores principais do design:
 const COLORS = {
-  primary: '#1976D2', // Azul Principal
+  primary: '#273d54', // Azul Escuro Principal
   secondary: '#E3F2FD', // Azul Claro para cards de filtro
   background: '#F0F4F8', // Fundo cinza claro/azul suave
   white: '#FFFFFF',
@@ -133,7 +135,11 @@ const HomeScreen = () => {
         <View style={styles.topBarLeft}>
           {/* Logo do App: Ícone e Título */}
           <View style={styles.topBarIconContainer}>
-            <Text style={styles.topBarIcon}>🏢</Text>
+            <Image
+              source={require('../../assets/images/Gemini_Generated_Image_fhlw55fhlw55fhlw-removebg-preview.png')}
+              style={styles.topBarIconImage}
+              resizeMode="contain"
+            />
           </View>
           <Text style={styles.topBarTitle}>CartórioConnect</Text>
         </View>
@@ -149,20 +155,12 @@ const HomeScreen = () => {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}>
         
-        {/* Card Branco com Informação Offline */}
+        {/* Card Verde com Informação Offline */}
         <View style={styles.offlineCard}>
-          <View style={styles.offlineIconWrapper}>
-            {/* Ícone de Globo riscado (Acesso Offline) */}
-            <Text style={styles.offlineIcon}>🌐</Text>
-            <View style={styles.offlineIconLine} />
-          </View>
-          <Text style={styles.offlineTitle}>Acesso 100% Offline</Text>
-          <Text style={styles.offlineSubtitle}>
-            Sua base de dados sempre com você.
-          </Text>
+          <Text style={styles.offlineTitle}>100% Offline</Text>
           {lastUpdate && (
             <View style={styles.updateInfoContainer}>
-              <Text style={styles.updateInfoLabel}>Última atualização:</Text>
+              <Text style={styles.updateInfoLabel}>Última atualização</Text>
               <Text style={styles.updateInfoDate}>{lastUpdate}</Text>
             </View>
           )}
@@ -231,66 +229,62 @@ const HomeScreen = () => {
           </View>
         )}
 
-        {/* Container de Busca e Filtros */}
+        {/* Container de Filtros por Tipo */}
         <View style={styles.mainContentArea}>
-          {/* Campo de Busca Branco */}
-          <View style={styles.searchInputWrapper}>
-            <Text style={styles.searchIcon}>🔍</Text>
-            <TextInput
-              style={styles.searchInput}
-              placeholder="Digite nome, cidade ou CNJ..."
-              placeholderTextColor="#999"
-              value={searchText}
-              onChangeText={setSearchText}
+          <Text style={styles.filterTitle}>Filtrar por Tipo</Text>
+          
+          {/* Grid de Tipos de Cartório */}
+          <View style={styles.typeGrid}>
+            <TypeButton 
+              icon="👤" 
+              text="Civil" 
+              onPress={() => navigation.navigate('CartorioList', {filterType: 'all', tipo: 'Civil'})} 
             />
-            {searchText.length > 0 && (
-              <TouchableOpacity
-                onPress={() => setSearchText('')}
-                style={styles.clearButton}>
-                <Text style={styles.clearIcon}>✕</Text>
-              </TouchableOpacity>
-            )}
-          </View>
-
-          {/* Botão Principal Azul de Busca */}
-          <TouchableOpacity
-            style={styles.mainSearchButton}
-            activeOpacity={0.8}
-            onPress={handleSearch}
-            disabled={!searchText.length}>
-            <Text style={styles.mainSearchIcon}>📞</Text>
-            <Text style={styles.mainSearchText}>Buscar Cartório no Brasil</Text>
-          </TouchableOpacity>
-
-          {/* Três Botões de Categoria Azuis Claros */}
-          <View style={styles.categoryButtonsContainer}>
-            <CategoryButton 
-              icon="📍" 
-              text="Por Estado" 
-              onPress={() => handleFilterBy('estado')} 
+            <TypeButton 
+              icon="📜" 
+              text="Protesto" 
+              onPress={() => navigation.navigate('CartorioList', {filterType: 'all', tipo: 'Protesto'})} 
             />
-            <CategoryButton 
-              icon="🏢" 
-              text="Por Cidade" 
-              onPress={() => handleFilterBy('cidade')} 
+            <TypeButton 
+              icon="🏠" 
+              text="Imóveis" 
+              onPress={() => navigation.navigate('CartorioList', {filterType: 'all', tipo: 'Imóveis'})} 
             />
-            <CategoryButton 
-              icon="🆔" 
-              text="Por CNJ" 
-              onPress={() => handleFilterBy('cnj')} 
+            <TypeButton 
+              icon="📄" 
+              text="Títulos e Documentos" 
+              onPress={() => navigation.navigate('CartorioList', {filterType: 'all', tipo: 'Títulos e Documentos'})} 
+            />
+            <TypeButton 
+              icon="⚖️" 
+              text="Jurídico" 
+              onPress={() => navigation.navigate('CartorioList', {filterType: 'all', tipo: 'Jurídico'})} 
+            />
+            <TypeButton 
+              icon="✍️" 
+              text="Tabelionato de Notas" 
+              onPress={() => navigation.navigate('CartorioList', {filterType: 'all', tipo: 'Tabelionato de Notas'})} 
             />
           </View>
-
-          {/* Banner do Google AdMob */}
-          <AdBanner 
-            size={BannerAdSize.FULL_BANNER}
-            position="center"
-          />
         </View>
       </ScrollView>
+      
+      {/* Rodapé Fixo para AdMob */}
+      <FooterBanner />
     </View>
   );
 };
+
+// Componente auxiliar para os botões de tipo
+const TypeButton = ({icon, text, onPress}: {icon: string, text: string, onPress: () => void}) => (
+  <TouchableOpacity
+    style={styles.typeButton}
+    activeOpacity={0.7}
+    onPress={onPress}>
+    <Text style={styles.typeIcon}>{icon}</Text>
+    <Text style={styles.typeText}>{text}</Text>
+  </TouchableOpacity>
+);
 
 // Componente auxiliar para os filtros rápidos
 const CategoryButton = ({icon, text, onPress}: {icon: string, text: string, onPress: () => void}) => (
@@ -334,17 +328,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   topBarIconContainer: {
-    width: 32,
-    height: 32,
-    borderRadius: 8,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)', // Branco Transparente
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 8,
   },
-  topBarIcon: {
-    fontSize: 18,
-    color: COLORS.white,
+  topBarIconImage: {
+    width: 28,
+    height: 28,
   },
   topBarTitle: {
     fontSize: 18,
@@ -365,122 +355,87 @@ const styles = StyleSheet.create({
     zIndex: 1, // Garantir que o conteúdo role por cima do fundo azul
   },
   scrollContent: {
-    paddingBottom: 40,
+    paddingBottom: 100,
     alignItems: 'center',
   },
-  // Card Offline Branco (centralizado e com sombra)
+  // Card Offline Verde (centralizado e com sombra)
   offlineCard: {
-    backgroundColor: COLORS.white,
+    backgroundColor: '#4CAF50',
     width: '90%',
-    marginTop: 20, // Distância do topo
+    marginTop: 20,
     padding: 30,
     borderRadius: 16,
     alignItems: 'center',
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: {width: 0, height: 4},
-        shadowOpacity: 0.1,
-        shadowRadius: 8,
-      },
-      android: {
-        elevation: 5,
-      },
-    }),
-  },
-  offlineIconWrapper: {
-    position: 'relative',
-    width: 64,
-    height: 64,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  offlineIcon: {
-    // Usando uma cor azul mais escura para o globo
-    fontSize: 56,
-    color: COLORS.primary, 
-    position: 'absolute',
-    zIndex: 1,
-  },
-  offlineIconLine: {
-    // Linha de "proibido" (deixei na cor do globo para simplificar)
-    position: 'absolute',
-    width: 70,
-    height: 5,
-    backgroundColor: COLORS.primary, 
-    borderRadius: 3,
-    zIndex: 2,
-    transform: [{rotate: '-45deg'}],
-    opacity: 0.8,
+    shadowColor: Platform.OS === 'ios' ? '#000' : undefined,
+    shadowOffset: Platform.OS === 'ios' ? {width: 0, height: 4} : undefined,
+    shadowOpacity: Platform.OS === 'ios' ? 0.2 : undefined,
+    shadowRadius: Platform.OS === 'ios' ? 8 : undefined,
+    elevation: Platform.OS === 'android' ? 5 : undefined,
   },
   offlineTitle: {
-    fontSize: 24,
+    fontSize: 32,
     fontWeight: '800',
-    color: COLORS.textDark,
+    color: COLORS.white,
     marginBottom: 8,
     textAlign: 'center',
-  },
-  offlineSubtitle: {
-    fontSize: 14,
-    color: COLORS.textSubtle,
-    textAlign: 'center',
-    marginBottom: 12,
   },
   updateInfoContainer: {
     marginTop: 16,
     paddingTop: 16,
     borderTopWidth: 1,
-    borderTopColor: '#e0e0e0',
+    borderTopColor: 'rgba(255,255,255,0.3)',
     alignItems: 'center',
     width: '100%',
   },
   updateInfoLabel: {
     fontSize: 12,
-    color: COLORS.textSubtle,
+    color: 'rgba(255,255,255,0.7)',
     marginBottom: 4,
   },
   updateInfoDate: {
     fontSize: 16,
     fontWeight: '700',
-    color: COLORS.primary,
+    color: COLORS.white,
   },
-  // Container de Busca
+  // Container de Filtros
   mainContentArea: {
     width: '100%',
     paddingHorizontal: 16,
     marginTop: 20,
   },
-  // Campo de Busca
-  searchInputWrapper: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: COLORS.white,
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: Platform.OS === 'ios' ? 14 : 4, // Ajuste para Android/iOS
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: '#e0e0e0',
-  },
-  searchIcon: {
-    fontSize: 18,
-    marginRight: 12,
-    color: '#999',
-  },
-  searchInput: {
-    flex: 1,
-    fontSize: 16,
+  filterTitle: {
+    fontSize: 20,
+    fontWeight: '700',
     color: COLORS.textDark,
-    paddingVertical: Platform.OS === 'android' ? 10 : 0, // Ajuste vertical no Android
+    marginBottom: 16,
   },
-  clearButton: {
-    padding: 4,
-    marginLeft: 8,
+  // Grid de Tipos de Cartório
+  typeGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    marginBottom: 30,
   },
-  clearIcon: {
-    fontSize: 18,
-    color: '#999',
+  typeButton: {
+    width: '48%',
+    backgroundColor: COLORS.secondary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 24,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+    marginBottom: 12,
+    minHeight: 120,
+  },
+  typeIcon: {
+    fontSize: 40,
+    marginBottom: 12,
+  },
+  typeText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: COLORS.primary,
+    textAlign: 'center',
   },
   // Botão Principal de Busca
   mainSearchButton: {

@@ -10,6 +10,8 @@ import {
   StatusBar,
   Platform,
   Alert,
+  Modal,
+  Image,
 } from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import * as Linking from 'expo-linking';
@@ -18,17 +20,30 @@ import {StackNavigationProp} from '@react-navigation/stack';
 import {RootStackParamList} from '../../App';
 import {cartorioService, Cartorio} from '../services/cartorioService';
 import {storageService} from '../services/storageService';
-import {locationService, CartorioWithDistance} from '../services/locationService';
+import {locationService} from '../services/locationService';
 
-// Cores principais do design (igual à HomeScreen):
+// Cores principais do design:
 const COLORS = {
-  primary: '#1976D2', // Azul Principal
-  secondary: '#E3F2FD', // Azul Claro para cards de filtro
-  background: '#F0F4F8', // Fundo cinza claro/azul suave
+  primary: '#273d54',
+  secondary: '#E3F2FD',
+  background: '#F0F4F8',
   white: '#FFFFFF',
   textDark: '#333333',
   textSubtle: '#757575',
+  star: '#FFB800',
+  starEmpty: '#D0D0D0',
 };
+
+// Tipos de cartório disponíveis
+const TIPOS_CARTORIO = [
+  {id: 'todos', label: 'Todos os Tipos', icon: '🏢'},
+  {id: 'Civil', label: 'Civil', icon: '👤'},
+  {id: 'Protesto', label: 'Protesto', icon: '📜'},
+  {id: 'Imóveis', label: 'Imóveis', icon: '🏠'},
+  {id: 'Títulos e Documentos', label: 'Títulos e Documentos', icon: '📄'},
+  {id: 'Jurídico', label: 'Jurídico', icon: '⚖️'},
+  {id: 'Tabelionato de Notas', label: 'Tabelionato de Notas', icon: '✍️'},
+];
 
 type CartorioListScreenRouteProp = RouteProp<RootStackParamList, 'CartorioList'>;
 type CartorioListScreenNavigationProp = StackNavigationProp<RootStackParamList, 'CartorioList'>;
@@ -42,31 +57,38 @@ const CartorioListScreen = () => {
   const [searchText, setSearchText] = useState('');
   const [loading, setLoading] = useState(true);
   const [favorites, setFavorites] = useState<Set<string>>(new Set());
-  const [sortByProximity, setSortByProximity] = useState(false);
-  const [userLocation, setUserLocation] = useState<{latitude: number; longitude: number} | null>(null);
-  // Inicializar o filtro com o valor recebido via navegação, ou 'all' como padrão
-  const [filterType, setFilterType] = useState<'all' | 'uf' | 'cidade' | 'cnj'>(
-    route.params?.filterType || 'all'
+  
+  // Tipo de cartório selecionado
+  const [tipoSelecionado, setTipoSelecionado] = useState<string>(
+    route.params && route.params.tipo ? route.params.tipo : 'todos'
   );
+  
+  // Modal de seleção de tipo
+  const [showTipoModal, setShowTipoModal] = useState(false);
+  
+  // Filtros: all, uf, cnj, favoritos
+  const [filterType, setFilterType] = useState<'all' | 'uf' | 'cnj' | 'favoritos'>(
+    route.params && route.params.filterType === 'uf' ? 'uf' : 
+    route.params && route.params.filterType === 'cnj' ? 'cnj' : 'all'
+  );
+  
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
   useEffect(() => {
     loadCartorios();
     loadFavorites();
-    requestLocationIfNeeded();
-  }, []);
+  }, [tipoSelecionado]);
 
-  // Atualizar o filtro quando os parâmetros da rota mudarem
   useEffect(() => {
-    if (route.params?.filterType) {
-      setFilterType(route.params.filterType);
+    if (route.params && route.params.tipo) {
+      setTipoSelecionado(route.params.tipo);
     }
   }, [route.params]);
 
   useEffect(() => {
     filterCartorios();
-  }, [searchText, cartorios, filterType, sortByProximity, userLocation]);
+  }, [searchText, cartorios, filterType, favorites]);
 
   const loadFavorites = async () => {
     try {
@@ -78,25 +100,19 @@ const CartorioListScreen = () => {
     }
   };
 
-  const requestLocationIfNeeded = async () => {
-    try {
-      const hasPermission = await locationService.hasPermission();
-      if (hasPermission) {
-        const location = await locationService.getCurrentLocation();
-        if (location) {
-          setUserLocation(location);
-          setSortByProximity(true);
-        }
-      }
-    } catch (error) {
-      console.error('Erro ao obter localização:', error);
-    }
-  };
-
   const loadCartorios = async () => {
     try {
       setLoading(true);
-      const data = await cartorioService.buscarTodosCartorios();
+      let data: Cartorio[];
+      
+      if (tipoSelecionado && tipoSelecionado !== 'todos') {
+        // Carregar cartórios do tipo específico
+        data = await cartorioService.buscarPorTipo(tipoSelecionado);
+      } else {
+        // Carregar todos os cartórios
+        data = await cartorioService.buscarTodosCartorios();
+      }
+      
       setCartorios(data);
       setFilteredCartorios(data);
     } catch (error) {
@@ -109,40 +125,52 @@ const CartorioListScreen = () => {
   const filterCartorios = async () => {
     let filtered = cartorios;
 
-    // Aplicar filtro de busca se houver texto
-    if (searchText.trim() !== '') {
-      switch (filterType) {
-        case 'uf':
-          filtered = cartorios.filter(c =>
-            c.uf?.toLowerCase().includes(searchText.toLowerCase())
-          );
-          break;
-        case 'cidade':
-          filtered = cartorios.filter(c =>
-            c.cidade?.toLowerCase().includes(searchText.toLowerCase())
-          );
-          break;
-        case 'cnj':
-          filtered = cartorios.filter(c =>
-            c.numeroCNJ?.includes(searchText)
-          );
-          break;
-        default:
-          filtered = cartorios.filter(
-            c =>
-              c.tituloCartorio?.toLowerCase().includes(searchText.toLowerCase()) ||
-              c.cidade?.toLowerCase().includes(searchText.toLowerCase()) ||
-              c.uf?.toLowerCase().includes(searchText.toLowerCase()) ||
-              c.numeroCNJ?.includes(searchText)
-          );
-      }
+    // Filtrar por favoritos primeiro
+    if (filterType === 'favoritos') {
+      filtered = cartorios.filter(c => {
+        const cnj = c.numeroCNJ || '';
+        return favorites.has(cnj);
+      });
     }
 
-    // Ordenar por proximidade se a localização estiver disponível
-    if (sortByProximity && userLocation) {
-      // Por enquanto, apenas marca que está ordenado por proximidade
-      // A ordenação real requereria coordenadas dos cartórios (geocoding)
-      // Por enquanto, mantém a ordem original
+    // Aplicar filtro de busca se houver texto
+    if (searchText.trim() !== '') {
+      const termo = searchText.toLowerCase();
+      
+      if (filterType === 'uf') {
+        filtered = filtered.filter(c => {
+          const uf = c.uf ? c.uf.toLowerCase() : '';
+          return uf.includes(termo);
+        });
+      } else if (filterType === 'cnj') {
+        filtered = filtered.filter(c => {
+          const cnj = c.numeroCNJ || '';
+          return cnj.includes(searchText);
+        });
+      } else {
+        // Busca em todos os campos
+        filtered = filtered.filter(c => {
+          const titulo = c.tituloCartorio ? c.tituloCartorio.toLowerCase() : '';
+          const cidade = c.cidade ? c.cidade.toLowerCase() : '';
+          const uf = c.uf ? c.uf.toLowerCase() : '';
+          const cnj = c.numeroCNJ ? c.numeroCNJ.toLowerCase() : '';
+          const endereco = c.endereco ? c.endereco.toLowerCase() : '';
+          const bairro = c.bairro ? c.bairro.toLowerCase() : '';
+          const responsavel = c.responsavel ? c.responsavel.toLowerCase() : '';
+          const telefone = c.telefone ? c.telefone.toLowerCase() : '';
+          const email = c.email ? c.email.toLowerCase() : '';
+          
+          return titulo.includes(termo) ||
+                 cidade.includes(termo) ||
+                 uf.includes(termo) ||
+                 cnj.includes(termo) ||
+                 endereco.includes(termo) ||
+                 bairro.includes(termo) ||
+                 responsavel.includes(termo) ||
+                 telefone.includes(termo) ||
+                 email.includes(termo);
+        });
+      }
     }
 
     setFilteredCartorios(filtered);
@@ -173,11 +201,22 @@ const CartorioListScreen = () => {
   };
 
   const handleCall = (phone: string) => {
-    Linking.openURL(`tel:${phone.replace(/\D/g, '')}`);
+    const cleanPhone = phone.replace(/\D/g, '');
+    Linking.openURL('tel:' + cleanPhone);
   };
 
   const handleEmail = (email: string) => {
-    Linking.openURL(`mailto:${email}`);
+    Linking.openURL('mailto:' + email);
+  };
+
+  const handleSelectTipo = (tipo: string) => {
+    setTipoSelecionado(tipo);
+    setShowTipoModal(false);
+  };
+
+  const getTipoLabel = () => {
+    const tipo = TIPOS_CARTORIO.find(t => t.id === tipoSelecionado);
+    return tipo ? tipo.label : 'Selecionar Tipo';
   };
 
   const totalPages = Math.ceil(filteredCartorios.length / itemsPerPage);
@@ -202,16 +241,16 @@ const CartorioListScreen = () => {
           <TouchableOpacity
             style={styles.favoriteButton}
             onPress={() => handleToggleFavorite(item)}>
-            <Text style={styles.favoriteIcon}>
-              {isFavorite ? '❤️' : '🤍'}
+            <Text style={[styles.favoriteIcon, isFavorite && styles.favoriteIconActive]}>
+              ★
             </Text>
           </TouchableOpacity>
         </View>
 
         <Text style={styles.cardAddress}>
           {item.endereco}
-          {item.numero && `, ${item.numero}`}
-          {item.bairro && ` - ${item.bairro}`}
+          {item.numero ? ', ' + item.numero : ''}
+          {item.bairro ? ' - ' + item.bairro : ''}
         </Text>
         <Text style={styles.cardAddress}>
           {item.cidade} - {item.uf}
@@ -236,10 +275,9 @@ const CartorioListScreen = () => {
           )}
           <TouchableOpacity
             style={styles.detailsButton}
-            onPress={() =>
-              navigation.navigate('CartorioDetail', {cartorio: item} as never)
-            }>
-            <Text style={styles.detailsIcon}>📄</Text>
+            onPress={() => navigation.navigate('CartorioDetail', {cartorio: item})}>
+            <Text style={styles.detailsButtonText}>Ver Detalhes</Text>
+            <Text style={styles.detailsButtonArrow}>→</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -257,14 +295,12 @@ const CartorioListScreen = () => {
 
   return (
     <View style={[styles.container, {paddingTop: insets.top}]}>
-      {/* StatusBar - área de notificação totalmente visível */}
       <StatusBar 
         barStyle="dark-content" 
         backgroundColor="transparent" 
         translucent={false}
       />
       
-      {/* Fundo Curvo Azul (igual à HomeScreen) */}
       <View style={[
         styles.blueBackground, 
         {
@@ -273,7 +309,6 @@ const CartorioListScreen = () => {
         }
       ]} />
 
-      {/* Top Bar (igual à HomeScreen) */}
       <View style={[styles.topBar, {paddingTop: 12, paddingBottom: 12}]}>
         <TouchableOpacity
           style={styles.backButton}
@@ -282,22 +317,34 @@ const CartorioListScreen = () => {
         </TouchableOpacity>
         <View style={styles.topBarLeft}>
           <View style={styles.topBarIconContainer}>
-            <Text style={styles.topBarIcon}>🏢</Text>
+            <Image
+              source={require('../../assets/images/Gemini_Generated_Image_fhlw55fhlw55fhlw-removebg-preview.png')}
+              style={styles.topBarIconImage}
+              resizeMode="contain"
+            />
           </View>
-          <Text style={styles.topBarTitle}>CartórioConnect</Text>
+          <Text style={styles.topBarTitle}>Cartórios</Text>
         </View>
-        <View style={styles.menuButton}>
-          <Text style={styles.menuIcon}>⋮</Text>
-        </View>
+        <View style={styles.menuButton} />
       </View>
 
-      {/* Barra de Busca */}
+      {/* Barra de Busca e Filtros */}
       <View style={styles.searchContainer}>
+        {/* Botão de Tipo */}
+        <TouchableOpacity
+          style={styles.tipoButton}
+          onPress={() => setShowTipoModal(true)}>
+          <Text style={styles.tipoButtonLabel}>Tipo:</Text>
+          <Text style={styles.tipoButtonValue}>{getTipoLabel()}</Text>
+          <Text style={styles.tipoButtonArrow}>▼</Text>
+        </TouchableOpacity>
+
+        {/* Campo de Busca */}
         <View style={styles.searchInputWrapper}>
           <Text style={styles.searchIcon}>🔍</Text>
           <TextInput
             style={styles.searchInput}
-            placeholder="Buscar cartórios..."
+            placeholder="Buscar em todos os campos..."
             placeholderTextColor="#999"
             value={searchText}
             onChangeText={setSearchText}
@@ -308,6 +355,8 @@ const CartorioListScreen = () => {
             </TouchableOpacity>
           )}
         </View>
+
+        {/* Filtros */}
         <View style={styles.filterButtons}>
           <TouchableOpacity
             style={[
@@ -340,20 +389,6 @@ const CartorioListScreen = () => {
           <TouchableOpacity
             style={[
               styles.filterButton,
-              filterType === 'cidade' && styles.filterButtonActive,
-            ]}
-            onPress={() => setFilterType('cidade')}>
-            <Text
-              style={[
-                styles.filterButtonText,
-                filterType === 'cidade' && styles.filterButtonTextActive,
-              ]}>
-              Cidade
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[
-              styles.filterButton,
               filterType === 'cnj' && styles.filterButtonActive,
             ]}
             onPress={() => setFilterType('cnj')}>
@@ -365,7 +400,28 @@ const CartorioListScreen = () => {
               CNJ
             </Text>
           </TouchableOpacity>
+          <TouchableOpacity
+            style={[
+              styles.filterButton,
+              filterType === 'favoritos' && styles.filterButtonActive,
+              styles.filterButtonFavoritos,
+            ]}
+            onPress={() => setFilterType('favoritos')}>
+            <Text style={styles.filterButtonStar}>★</Text>
+            <Text
+              style={[
+                styles.filterButtonText,
+                filterType === 'favoritos' && styles.filterButtonTextActive,
+              ]}>
+              Favoritos
+            </Text>
+          </TouchableOpacity>
         </View>
+
+        {/* Contador de resultados */}
+        <Text style={styles.resultCount}>
+          {filteredCartorios.length} cartório{filteredCartorios.length !== 1 ? 's' : ''} encontrado{filteredCartorios.length !== 1 ? 's' : ''}
+        </Text>
       </View>
 
       {/* Lista */}
@@ -373,12 +429,14 @@ const CartorioListScreen = () => {
         data={paginatedCartorios}
         renderItem={renderItem}
         keyExtractor={(item, index) =>
-          item.numeroCNJ || `cartorio-${index}`
+          item.numeroCNJ ? item.numeroCNJ : 'cartorio-' + index
         }
         contentContainerStyle={styles.list}
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
+            <Text style={styles.emptyIcon}>📋</Text>
             <Text style={styles.emptyText}>Nenhum cartório encontrado</Text>
+            <Text style={styles.emptySubtext}>Tente ajustar os filtros ou termo de busca</Text>
           </View>
         }
       />
@@ -400,14 +458,48 @@ const CartorioListScreen = () => {
               styles.pageButton,
               currentPage === totalPages && styles.pageButtonDisabled,
             ]}
-            onPress={() =>
-              setCurrentPage(Math.min(totalPages, currentPage + 1))
-            }
+            onPress={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
             disabled={currentPage === totalPages}>
             <Text style={styles.pageButtonText}>→</Text>
           </TouchableOpacity>
         </View>
       )}
+
+      {/* Modal de Seleção de Tipo */}
+      <Modal
+        visible={showTipoModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowTipoModal(false)}>
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowTipoModal(false)}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Selecionar Tipo</Text>
+            {TIPOS_CARTORIO.map((tipo) => (
+              <TouchableOpacity
+                key={tipo.id}
+                style={[
+                  styles.modalOption,
+                  tipoSelecionado === tipo.id && styles.modalOptionActive,
+                ]}
+                onPress={() => handleSelectTipo(tipo.id)}>
+                <Text style={styles.modalOptionIcon}>{tipo.icon}</Text>
+                <Text style={[
+                  styles.modalOptionText,
+                  tipoSelecionado === tipo.id && styles.modalOptionTextActive,
+                ]}>
+                  {tipo.label}
+                </Text>
+                {tipoSelecionado === tipo.id && (
+                  <Text style={styles.modalOptionCheck}>✓</Text>
+                )}
+              </TouchableOpacity>
+            ))}
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </View>
   );
 };
@@ -428,7 +520,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: COLORS.textSubtle,
   },
-  // Fundo Curvo Azul (igual à HomeScreen)
   blueBackground: {
     position: 'absolute',
     left: 0,
@@ -438,7 +529,6 @@ const styles = StyleSheet.create({
     borderBottomLeftRadius: 30,
     borderBottomRightRadius: 30,
   },
-  // Top Bar (igual à HomeScreen)
   topBar: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -463,17 +553,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   topBarIconContainer: {
-    width: 32,
-    height: 32,
-    borderRadius: 8,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 8,
   },
-  topBarIcon: {
-    fontSize: 18,
-    color: COLORS.white,
+  topBarIconImage: {
+    width: 28,
+    height: 28,
   },
   topBarTitle: {
     fontSize: 18,
@@ -482,11 +568,7 @@ const styles = StyleSheet.create({
   },
   menuButton: {
     padding: 8,
-  },
-  menuIcon: {
-    fontSize: 24,
-    color: COLORS.white,
-    fontWeight: 'bold',
+    width: 40,
   },
   // Barra de Busca
   searchContainer: {
@@ -495,10 +577,37 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#e0e0e0',
   },
+  // Botão de Tipo
+  tipoButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.secondary,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 10,
+    marginBottom: 12,
+    borderWidth: 2,
+    borderColor: COLORS.primary,
+  },
+  tipoButtonLabel: {
+    fontSize: 14,
+    color: COLORS.textSubtle,
+    marginRight: 8,
+  },
+  tipoButtonValue: {
+    flex: 1,
+    fontSize: 16,
+    fontWeight: '600',
+    color: COLORS.primary,
+  },
+  tipoButtonArrow: {
+    fontSize: 12,
+    color: COLORS.primary,
+  },
   searchInputWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.white,
+    backgroundColor: COLORS.background,
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: Platform.OS === 'ios' ? 14 : 4,
@@ -523,19 +632,32 @@ const styles = StyleSheet.create({
   },
   filterButtons: {
     flexDirection: 'row',
-    gap: 8,
+    flexWrap: 'wrap',
   },
   filterButton: {
-    paddingHorizontal: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 20,
     backgroundColor: COLORS.secondary,
     borderWidth: 1,
     borderColor: COLORS.secondary,
+    marginRight: 8,
+    marginBottom: 8,
   },
   filterButtonActive: {
     backgroundColor: COLORS.primary,
     borderColor: COLORS.primary,
+  },
+  filterButtonFavoritos: {
+    backgroundColor: '#FFF8E1',
+    borderColor: COLORS.star,
+  },
+  filterButtonStar: {
+    fontSize: 14,
+    color: COLORS.star,
+    marginRight: 4,
   },
   filterButtonText: {
     fontSize: 14,
@@ -545,28 +667,28 @@ const styles = StyleSheet.create({
   filterButtonTextActive: {
     color: COLORS.white,
   },
+  resultCount: {
+    fontSize: 13,
+    color: COLORS.textSubtle,
+    marginTop: 8,
+    textAlign: 'center',
+  },
   // Lista
   list: {
     padding: 16,
     paddingBottom: 100,
   },
-  // Cards (estilo similar à HomeScreen)
+  // Cards
   card: {
     backgroundColor: COLORS.white,
     padding: 16,
     borderRadius: 12,
     marginBottom: 12,
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: {width: 0, height: 2},
-        shadowOpacity: 0.1,
-        shadowRadius: 8,
-      },
-      android: {
-        elevation: 4,
-      },
-    }),
+    shadowColor: Platform.OS === 'ios' ? '#000' : undefined,
+    shadowOffset: Platform.OS === 'ios' ? {width: 0, height: 2} : undefined,
+    shadowOpacity: Platform.OS === 'ios' ? 0.1 : undefined,
+    shadowRadius: Platform.OS === 'ios' ? 8 : undefined,
+    elevation: Platform.OS === 'android' ? 4 : undefined,
   },
   cardHeader: {
     flexDirection: 'row',
@@ -579,7 +701,7 @@ const styles = StyleSheet.create({
     marginRight: 8,
   },
   cardTitle: {
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: 'bold',
     color: COLORS.textDark,
     marginBottom: 4,
@@ -588,10 +710,14 @@ const styles = StyleSheet.create({
     padding: 4,
   },
   favoriteIcon: {
-    fontSize: 24,
+    fontSize: 28,
+    color: COLORS.starEmpty,
+  },
+  favoriteIconActive: {
+    color: COLORS.star,
   },
   cardCNJ: {
-    fontSize: 14,
+    fontSize: 13,
     color: COLORS.textSubtle,
     marginBottom: 8,
   },
@@ -604,7 +730,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     marginTop: 12,
-    gap: 8,
     alignItems: 'center',
   },
   actionButton: {
@@ -614,32 +739,58 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 8,
-    gap: 6,
+    marginRight: 8,
+    marginBottom: 8,
   },
   actionButtonText: {
     color: COLORS.white,
     fontSize: 14,
     fontWeight: '500',
+    marginLeft: 6,
   },
   actionButtonIcon: {
     fontSize: 16,
-    color: COLORS.white,
   },
   detailsButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.secondary,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 8,
     marginLeft: 'auto',
-    padding: 8,
+    borderWidth: 1,
+    borderColor: COLORS.primary,
   },
-  detailsIcon: {
-    fontSize: 20,
+  detailsButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: COLORS.primary,
+    marginRight: 6,
+  },
+  detailsButtonArrow: {
+    fontSize: 16,
+    fontWeight: 'bold',
     color: COLORS.primary,
   },
   emptyContainer: {
     padding: 40,
     alignItems: 'center',
   },
+  emptyIcon: {
+    fontSize: 48,
+    marginBottom: 16,
+  },
   emptyText: {
-    fontSize: 16,
+    fontSize: 18,
+    color: COLORS.textDark,
+    fontWeight: '600',
+    marginBottom: 8,
+  },
+  emptySubtext: {
+    fontSize: 14,
     color: COLORS.textSubtle,
+    textAlign: 'center',
   },
   // Paginação
   paginationContainer: {
@@ -655,13 +806,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     borderTopWidth: 1,
     borderTopColor: '#e0e0e0',
-    gap: 16,
   },
   pageButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
     borderRadius: 8,
     backgroundColor: COLORS.secondary,
+    marginHorizontal: 12,
   },
   pageButtonDisabled: {
     opacity: 0.4,
@@ -674,6 +825,66 @@ const styles = StyleSheet.create({
   pageInfo: {
     fontSize: 14,
     color: COLORS.textSubtle,
+  },
+  // Modal
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  modalContent: {
+    backgroundColor: COLORS.white,
+    borderRadius: 16,
+    padding: 20,
+    width: '100%',
+    maxWidth: 400,
+    shadowColor: '#000',
+    shadowOffset: {width: 0, height: 4},
+    shadowOpacity: 0.25,
+    shadowRadius: 16,
+    elevation: 10,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: COLORS.textDark,
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  modalOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+    marginBottom: 8,
+    backgroundColor: COLORS.background,
+  },
+  modalOptionActive: {
+    backgroundColor: COLORS.secondary,
+    borderWidth: 2,
+    borderColor: COLORS.primary,
+  },
+  modalOptionIcon: {
+    fontSize: 24,
+    marginRight: 12,
+  },
+  modalOptionText: {
+    flex: 1,
+    fontSize: 16,
+    color: COLORS.textDark,
+    fontWeight: '500',
+  },
+  modalOptionTextActive: {
+    color: COLORS.primary,
+    fontWeight: '700',
+  },
+  modalOptionCheck: {
+    fontSize: 18,
+    color: COLORS.primary,
+    fontWeight: 'bold',
   },
 });
 

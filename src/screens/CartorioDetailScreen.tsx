@@ -19,16 +19,18 @@ import {locationService} from '../services/locationService';
 import {shareService} from '../services/shareService';
 import AdBanner from '../components/AdBanner';
 import {RootStackParamList} from '../../App';
-import {BannerAdSize} from 'react-native-google-mobile-ads';
+// import {BannerAdSize} from 'react-native-google-mobile-ads'; // Comentado - requer build nativo
 
 // Cores principais do design (igual à HomeScreen):
 const COLORS = {
-  primary: '#1976D2', // Azul Principal
+  primary: '#273d54', // Azul Escuro Principal
   secondary: '#E3F2FD', // Azul Claro para cards de filtro
   background: '#F0F4F8', // Fundo cinza claro/azul suave
   white: '#FFFFFF',
   textDark: '#333333',
   textSubtle: '#757575',
+  star: '#FFB800',
+  starEmpty: '#D0D0D0',
 };
 
 type CartorioDetailScreenRouteProp = RouteProp<
@@ -173,8 +175,8 @@ const CartorioDetailScreen = () => {
         <TouchableOpacity
           style={styles.favoriteButton}
           onPress={handleToggleFavorite}>
-          <Text style={styles.favoriteIcon}>
-            {isFavorite ? '❤️' : '🤍'}
+          <Text style={[styles.favoriteIcon, isFavorite && styles.favoriteIconActive]}>
+            ★
           </Text>
         </TouchableOpacity>
       </View>
@@ -325,13 +327,13 @@ const CartorioDetailScreen = () => {
           </View>
         </View>
 
-        {/* Banner do Google AdMob */}
-        <View style={styles.adContainer}>
+        {/* Banner do Google AdMob - Comentado: requer build nativo */}
+        {/* <View style={styles.adContainer}>
           <AdBanner
             size={BannerAdSize.FULL_BANNER}
             position="center"
           />
-        </View>
+        </View> */}
       </ScrollView>
     </View>
   );
@@ -405,7 +407,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   favoriteIcon: {
-    fontSize: 24,
+    fontSize: 28,
+    color: COLORS.starEmpty,
+  },
+  favoriteIconActive: {
+    color: COLORS.star,
   },
   scrollView: {
     flex: 1,

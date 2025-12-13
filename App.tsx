@@ -3,7 +3,7 @@ import {NavigationContainer} from '@react-navigation/native';
 import {createStackNavigator} from '@react-navigation/stack';
 import {StatusBar as ExpoStatusBar} from 'expo-status-bar';
 import {AppState, StatusBar, Platform} from 'react-native';
-import mobileAds from 'react-native-google-mobile-ads';
+// import mobileAds from 'react-native-google-mobile-ads'; // Comentado - requer build nativo
 import HomeScreen from './src/screens/HomeScreen';
 import CartorioListScreen from './src/screens/CartorioListScreen';
 import CartorioDetailScreen from './src/screens/CartorioDetailScreen';
@@ -14,7 +14,7 @@ import {Cartorio} from './src/services/cartorioService';
 
 export type RootStackParamList = {
   Home: undefined;
-  CartorioList: {filterType?: 'uf' | 'cidade' | 'cnj' | 'all'};
+  CartorioList: {filterType?: 'uf' | 'cidade' | 'cnj' | 'all'; tipo?: string};
   CartorioDetail: {cartorio: Cartorio};
   About: undefined;
 };
@@ -26,16 +26,15 @@ const App = () => {
   useAppState();
 
   useEffect(() => {
-    // Inicializar o Google AdMob
-    mobileAds()
-      .initialize()
-      .then(adapterStatuses => {
-        console.log('✅ Google AdMob inicializado com sucesso');
-        console.log('Adapter statuses:', adapterStatuses);
-      })
-      .catch(error => {
-        console.error('❌ Erro ao inicializar Google AdMob:', error);
-      });
+    // COMENTADO: AdMob requer build nativo (não funciona no Expo Go)
+    // mobileAds()
+    //   .initialize()
+    //   .then(adapterStatuses => {
+    //     console.log('✅ Google AdMob inicializado com sucesso');
+    //   })
+    //   .catch(error => {
+    //     console.error('❌ Erro ao inicializar Google AdMob:', error);
+    //   });
 
     // Listener para pausar processos quando o app vai para background
     const subscription = AppState.addEventListener('change', nextAppState => {
