@@ -26,9 +26,6 @@ import {StackNavigationProp} from '@react-navigation/stack';
 import {RootStackParamList} from '../../App';
 import {storageService} from '../services/storageService';
 import {cartorioService, Cartorio} from '../services/cartorioService';
-import AdBanner from '../components/AdBanner';
-import FooterBanner from '../components/FooterBanner';
-// import {BannerAdSize} from 'react-native-google-mobile-ads'; // Comentado - requer build nativo
 // Recomenda-se usar ícones vetoriais (Ex: @expo/vector-icons) para ícones,
 // mas vou usar emojis aqui para manter a simplicidade do seu código atual.
 
@@ -268,9 +265,6 @@ const HomeScreen = () => {
           </View>
         </View>
       </ScrollView>
-      
-      {/* Rodapé Fixo para AdMob */}
-      <FooterBanner />
     </View>
   );
 };

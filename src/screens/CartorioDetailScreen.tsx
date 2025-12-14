@@ -17,9 +17,7 @@ import {Cartorio} from '../services/cartorioService';
 import {storageService} from '../services/storageService';
 import {locationService} from '../services/locationService';
 import {shareService} from '../services/shareService';
-import AdBanner from '../components/AdBanner';
 import {RootStackParamList} from '../../App';
-// import {BannerAdSize} from 'react-native-google-mobile-ads'; // Comentado - requer build nativo
 
 // Cores principais do design (igual à HomeScreen):
 const COLORS = {
@@ -301,13 +299,6 @@ const CartorioDetailScreen = () => {
           </View>
         </View>
 
-        {/* Banner do Google AdMob - Comentado: requer build nativo */}
-        {/* <View style={styles.adContainer}>
-          <AdBanner
-            size={BannerAdSize.FULL_BANNER}
-            position="center"
-          />
-        </View> */}
       </ScrollView>
     </View>
   );

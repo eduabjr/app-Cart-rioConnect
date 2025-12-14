@@ -16,15 +16,6 @@
     "assetBundlePatterns": [
       "**/*"
     ],
-    "plugins": [
-      [
-        "react-native-google-mobile-ads",
-        {
-          "androidAppId": "ca-app-pub-3940256099942544~3347511713",
-          "iosAppId": "ca-app-pub-3940256099942544~1458002511"
-        }
-      ]
-    ],
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.cartorioconnect.app",
@@ -50,24 +41,8 @@
         "ACCESS_FINE_LOCATION",
         "ACCESS_COARSE_LOCATION"
       ],
-      "blockedPermissions": [
-        "android.permission.RECEIVE_BOOT_COMPLETED",
-        "android.permission.WAKE_LOCK",
-        "android.permission.POST_NOTIFICATIONS",
-        "android.permission.VIBRATE",
-        "android.permission.USE_FULL_SCREEN_INTENT",
-        "com.android.alarm.permission.SET_ALARM",
-        "android.permission.FOREGROUND_SERVICE",
-        "android.permission.FOREGROUND_SERVICE_DATA_SYNC",
-        "android.permission.FOREGROUND_SERVICE_LOCATION",
-        "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK",
-        "android.permission.FOREGROUND_SERVICE_PHONE_CALL",
-        "android.permission.SCHEDULE_EXACT_ALARM",
-        "android.permission.USE_EXACT_ALARM"
-      ],
       "softwareKeyboardLayoutMode": "pan",
-      "allowBackup": false,
-      "usesCleartextTraffic": false
+      "allowBackup": false
     },
     "web": {
       "favicon": "./assets/images/logo.png"
